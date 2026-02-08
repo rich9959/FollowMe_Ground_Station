@@ -1,0 +1,170 @@
+<!doctype html>
+<html>
+  <head>
+    <title>FollowMe Ground Station</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="UTF-8" />
+    <style>
+      body {
+        font-family: sans-serif;
+        background: #f4f4f9;
+        color: #333;
+        margin: 0;
+      }
+      .topnav {
+        background: #1b1b1b;
+        color: white;
+        padding: 1em;
+        text-align: center;
+      }
+      .content {
+        padding: 20px;
+        max-width: 800px;
+        margin: auto;
+      }
+      .card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+      .connectButton {
+        background: #24af37;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .disconnectButton {
+        background: #d13a30;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .gray-label {
+        color: #666;
+        font-size: 0.9em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topnav"><h1>FollowMe Ground Station</h1></div>
+    <div class="content">
+      <div class="card">
+        <button id="connectBleButton" class="connectButton">
+          Connect to Ground Station
+        </button>
+        <button id="disconnectBleButton" class="disconnectButton">
+          Disconnect
+        </button>
+        <p class="gray-label">
+          Status:
+          <strong
+            ><span id="bleState" style="color: #d13a30"
+              >Disconnected</span
+            ></strong
+          ><br />
+          Connected To:
+          <strong><span id="deviceNameDisplay">None</span></strong>
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>GPS Data</h2>
+        <p>
+          Coordinates:
+          <span id="valueContainer" style="font-weight: bold">0,0,0</span>
+        </p>
+        <p class="gray-label">Last reading: <span id="timestamp"></span></p>
+      </div>
+    </div>
+
+    <script>
+      const connectButton = document.getElementById("connectBleButton");
+      const disconnectButton = document.getElementById("disconnectBleButton");
+      const bleStateContainer = document.getElementById("bleState");
+      const deviceNameDisplay = document.getElementById("deviceNameDisplay");
+      const retrievedValue = document.getElementById("valueContainer");
+      const timestampContainer = document.getElementById("timestamp");
+
+      // Standardized Config (Matching your ESP32 standardized UUIDs)
+      const NAME_PREFIX = "FollowMe-";
+      const SERVICE_UUID = "ef94ce20-ea4e-4273-8e8e-0d9731cdceff";
+      const SENSOR_CHAR_UUID = "6ae0ada1-77da-4169-abd4-81160bfd4528";
+
+      var bleServer;
+      var autoReconnect = false;
+
+      // Helper to update Status Text and Color
+      function updateStatus(text, color) {
+        bleStateContainer.innerHTML = text;
+        bleStateContainer.style.color = color;
+      }
+
+      async function connectToDevice() {
+        try {
+          updateStatus("Searching...", "#ff9800");
+
+          const device = await navigator.bluetooth.requestDevice({
+            filters: [{ namePrefix: NAME_PREFIX }],
+            optionalServices: [SERVICE_UUID],
+          });
+
+          updateStatus("Connecting...", "#ff9800");
+
+          device.addEventListener("gattservicedisconnected", onDisconnected);
+
+          bleServer = await device.gatt.connect();
+          const service = await bleServer.getPrimaryService(SERVICE_UUID);
+          const characteristic =
+            await service.getCharacteristic(SENSOR_CHAR_UUID);
+
+          await characteristic.startNotifications();
+
+          characteristic.addEventListener("characteristicvaluechanged", (e) => {
+            retrievedValue.innerHTML = new TextDecoder().decode(e.target.value);
+            timestampContainer.innerHTML = new Date().toLocaleTimeString();
+          });
+
+          updateStatus("Connected", "#24af37");
+          deviceNameDisplay.innerHTML = device.name;
+          autoReconnect = true; // Enable auto-reconnect logic if signal drops
+        } catch (err) {
+          console.log("Error: " + err);
+          updateStatus("Disconnected", "#d13a30");
+        }
+      }
+
+      function onDisconnected(event) {
+        const name = event.target.name;
+        console.log("Device " + name + " disconnected.");
+
+        if (autoReconnect) {
+          updateStatus("Reconnecting...", "#ff9800");
+          // Attempt to reconnect every 3 seconds
+          setTimeout(() => {
+            if (autoReconnect) connectToDevice();
+          }, 3000);
+        } else {
+          updateStatus("Disconnected", "#d13a30");
+          deviceNameDisplay.innerHTML = "None";
+        }
+      }
+
+      connectButton.addEventListener("click", connectToDevice);
+
+      disconnectButton.addEventListener("click", () => {
+        if (bleServer && bleServer.connected) {
+          autoReconnect = false; // Disable auto-reconnect for manual disconnects
+          bleServer.disconnect();
+          updateStatus("Disconnected", "#d13a30");
+          deviceNameDisplay.innerHTML = "None";
+        }
+      });
+    </script>
+  </body>
+</html>
