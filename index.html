@@ -108,7 +108,7 @@
     >
       <div>
         <strong style="font-size: 1.2rem; display: block"
-          >FollowMe Aerospace</strong
+          >FollowMe Rautronics Hobbies</strong
         >
         <span style="font-size: 0.85rem; color: #666"
           >Hardware: v2.1 | Firmware: v6.02</span
@@ -162,7 +162,7 @@
           <span id="gpsAlt" class="big-data">0.0</span>
         </div>
         <div>
-          <span class="label">Baro Altitude</span>
+          <span class="label">Barometric Altitude</span>
           <span id="baroAlt" class="big-data">0.0</span>
         </div>
       </div>
@@ -243,13 +243,15 @@
       }
 
       // --- WEB BLUETOOTH TWO-WAY MANAGEMENT ---
+      // UPGRADED: Completely open scanning filter to prevent pairing drops
       async function connectBLE() {
         try {
           bleDevice = await navigator.bluetooth.requestDevice({
-            filters: [{ namePrefix: "FollowMe" }, { name: "ESP32_KML_Sender" }],
+            acceptAllDevices: true,
             optionalServices: [SERVICE_UUID],
           });
 
+          log("Device selected. Connecting to GATT Server...");
           const server = await bleDevice.gatt.connect();
           const service = await server.getPrimaryService(SERVICE_UUID);
 
