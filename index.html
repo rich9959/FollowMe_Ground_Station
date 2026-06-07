@@ -251,7 +251,7 @@
             optionalServices: [SERVICE_UUID],
           });
 
-          log("Device selected. Connecting to GATT Server...");
+          console.log("Device selected. Connecting to GATT Server...");
           const server = await bleDevice.gatt.connect();
           const service = await server.getPrimaryService(SERVICE_UUID);
 
