@@ -1,382 +1,166 @@
 <!doctype html>
-<html lang="en">
+<html>
   <head>
+    <title>FollowMe Ground Station</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FollowMe Master Command Center</title>
     <style>
-      :root {
-        --primary: #007bff;
-        --success: #28a745;
-        --danger: #dc3545;
-        --dark: #333;
-        --light: #f8f9fa;
-      }
       body {
-        font-family: "Segoe UI", Tahoma, sans-serif;
-        background: #e9ecef;
+        font-family: sans-serif;
+        background: #f4f4f9;
+        color: #333;
         margin: 0;
-        padding: 15px;
       }
-
+      .topnav {
+        background: #1b1b1b;
+        color: white;
+        padding: 1em;
+        text-align: center;
+      }
+      .content {
+        padding: 20px;
+        max-width: 800px;
+        margin: auto;
+      }
       .card {
         background: white;
+        padding: 20px;
         border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 15px;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
       }
-      .grid-2 {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-      }
-
-      button {
-        padding: 10px 15px;
+      .connectButton {
+        background: #24af37;
+        color: white;
+        padding: 10px 20px;
         border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        font-weight: bold;
-      }
-      .btn-connect {
-        background: var(--primary);
-        color: white;
-        width: 100%;
-      }
-      .btn-disconnect {
-        background: var(--danger);
-        color: white;
-        width: 100%;
-      }
-      .btn-save {
-        background: var(--dark);
-        color: white;
-        margin-top: 10px;
-        width: 100%;
-      }
-      .btn-cmd {
-        background: var(--success);
-        color: white;
-        width: 100%;
-        margin-top: 5px;
-      }
-
-      .big-data {
-        font-size: 2.2rem;
-        font-weight: bold;
-        color: var(--primary);
-        display: block;
-      }
-      .label {
-        font-size: 0.8rem;
-        color: #666;
-        text-transform: uppercase;
-        margin-top: 5px;
-        display: block;
-      }
-      .status-pill {
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 0.8rem;
-        background: #eee;
-      }
-
-      #lost-connection-alert {
-        display: none;
-        color: var(--danger);
-        font-weight: bold;
-        text-align: center;
-        margin: 10px 0;
-      }
-      .hidden {
-        display: none;
-      }
-      select,
-      input {
-        padding: 8px;
-        border: 1px solid #ccc;
         border-radius: 4px;
-        box-sizing: border-box;
+        cursor: pointer;
+      }
+      .disconnectButton {
+        background: #d13a30;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .gray-label {
+        color: #666;
+        font-size: 0.9em;
       }
     </style>
   </head>
   <body>
-    <div
-      class="card"
-      style="display: flex; justify-content: space-between; align-items: center"
-    >
-      <div>
-        <strong style="font-size: 1.2rem; display: block"
-          >FollowMe Rautronics Hobbies</strong
-        >
-        <span style="font-size: 0.85rem; color: #666"
-          >Hardware: v2.1 | Firmware: v6.02</span
-        >
-      </div>
-      <span id="conn-status" style="font-weight: bold; color: var(--danger)"
-        >● Offline</span
-      >
-    </div>
-
-    <div class="card">
-      <button id="connectBtn" class="btn-connect">Connect to FollowMe</button>
-      <button id="disconnectBtn" class="btn-disconnect hidden">
-        Disconnect Ground Station
-      </button>
-      <div id="lost-connection-alert">
-        ⚠️ LINK LOSS: RECONNECTING TO DONGLE...
-      </div>
-
-      <div
-        id="controls-panel"
-        style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px"
-      >
-        <h4 style="margin: 0 0 10px 0; color: var(--dark)">
-          Remote Hardware Configuration
-        </h4>
-        <div class="grid-2">
-          <div>
-            <label class="label">Change Vehicle Profile</label>
-            <select id="vehicleType" style="width: 100%">
-              <option value="ROCKET">Rocket Mode</option>
-              <option value="DRONE">Drone Mode</option>
-              <option value="ROVER">Rover Mode</option>
-            </select>
-          </div>
-          <div>
-            <label class="label">Time Zone Offset</label>
-            <input type="number" id="tzOffset" value="-4" style="width: 100%" />
-          </div>
-        </div>
-        <button id="syncHardwareBtn" class="btn-cmd" disabled>
-          Sync Settings to Hardware
+    <div class="topnav"><h1>FollowMe Ground Station</h1></div>
+    <div class="content">
+      <div class="card">
+        <button id="connectBleButton" class="connectButton">
+          Connect to Ground Station
         </button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="grid-2">
-        <div>
-          <span class="label">GPS Altitude</span>
-          <span id="gpsAlt" class="big-data">0.0</span>
-        </div>
-        <div>
-          <span class="label">Barometric Altitude</span>
-          <span id="baroAlt" class="big-data">0.0</span>
-        </div>
-      </div>
-      <div
-        style="
-          margin-top: 15px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        "
-      >
-        <div>
-          <span class="label">Profile State</span>
-          <span id="rocketState" class="status-pill">STANDBY</span>
-        </div>
-        <div id="speed-container" class="hidden">
-          <span class="label">Ground Speed</span>
-          <span id="liveSpeed" style="font-weight: bold; font-size: 1.1rem"
-            >0.0 mph</span
-          >
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <span class="label">Flight Logging Storage</span>
-      <div class="grid-2">
-        <button class="btn-save" onclick="downloadCSV()">
-          Export Graph CSV
+        <button id="disconnectBleButton" class="disconnectButton">
+          Disconnect
         </button>
-        <button class="btn-save" onclick="downloadKML()">
-          Export Earth KML
-        </button>
+        <p class="gray-label">
+          Status:
+          <strong><span id="bleState" style="color: #d13a30">Disconnected</span></strong><br />
+          Connected To:
+          <strong><span id="deviceNameDisplay">None</span></strong>
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>GPS Data</h2>
+        <p>
+          Coordinates:
+          <span id="valueContainer" style="font-weight: bold">0,0,0</span>
+        </p>
+        <p class="gray-label">Last reading: <span id="timestamp"></span></p>
       </div>
     </div>
 
     <script>
-      let bleDevice, rxChar, txChar;
-      let flightData = [];
-      let speechEnabled = false;
+      const connectButton = document.getElementById("connectBleButton");
+      const disconnectButton = document.getElementById("disconnectBleButton");
+      const bleStateContainer = document.getElementById("bleState");
+      const deviceNameDisplay = document.getElementById("deviceNameDisplay");
+      const retrievedValue = document.getElementById("valueContainer");
+      const timestampContainer = document.getElementById("timestamp");
 
-      // Standard Nordic UART UUIDs (Used by most ESP32 BLE libraries)
-      const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-      const RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"; // Notify (Read data)
-      const TX_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // Write (Send commands)
+      // Standardized Config (Matching your ESP32 standardized UUIDs)
+      const NAME_PREFIX = "FollowMe-";
+      const SERVICE_UUID = "19b10000-e8f2-537e-4f6c-d104768a1214";
+      const SENSOR_CHAR_UUID = "19b10001-e8f2-537e-4f6c-d104768a1214";
 
-      const connectBtn = document.getElementById("connectBtn");
-      const disconnectBtn = document.getElementById("disconnectBtn");
-      const syncHardwareBtn = document.getElementById("syncHardwareBtn");
-      const alertBox = document.getElementById("lost-connection-alert");
-      const vType = document.getElementById("vehicleType");
-      const tzInput = document.getElementById("tzOffset");
+      var bleServer;
+      var autoReconnect = false;
 
-      // --- LOCAL STORAGE: Remember selections across tab closes ---
-      window.addEventListener("DOMContentLoaded", () => {
-        if (localStorage.getItem("followme_vType"))
-          vType.value = localStorage.getItem("followme_vType");
-        if (localStorage.getItem("followme_tz"))
-          tzInput.value = localStorage.getItem("followme_tz");
-        updateUILayout();
-      });
-
-      vType.addEventListener("change", () => {
-        localStorage.setItem("followme_vType", vType.value);
-        updateUILayout();
-      });
-
-      tzInput.addEventListener("change", () => {
-        localStorage.setItem("followme_tz", tzInput.value);
-      });
-
-      function updateUILayout() {
-        const type = vType.value;
-        document
-          .getElementById("speed-container")
-          .classList.toggle("hidden", type === "ROCKET");
-        speechEnabled = type === "ROCKET";
+      // Helper to update Status Text and Color
+      function updateStatus(text, color) {
+        bleStateContainer.innerHTML = text;
+        bleStateContainer.style.color = color;
       }
 
-      // --- WEB BLUETOOTH TWO-WAY MANAGEMENT ---
-      // UPGRADED: Completely open scanning filter to prevent pairing drops
-      async function connectBLE() {
+      async function connectToDevice() {
         try {
-          bleDevice = await navigator.bluetooth.requestDevice({
-            acceptAllDevices: true,
+          updateStatus("Searching...", "#ff9800");
+
+          const device = await navigator.bluetooth.requestDevice({
+            filters: [{ namePrefix: NAME_PREFIX }],
             optionalServices: [SERVICE_UUID],
           });
 
-          console.log("Device selected. Connecting to GATT Server...");
-          const server = await bleDevice.gatt.connect();
-          const service = await server.getPrimaryService(SERVICE_UUID);
+          updateStatus("Connecting...", "#ff9800");
 
-          // Fetch both pipelines
-          rxChar = await service.getCharacteristic(RX_CHARACTERISTIC_UUID);
-          txChar = await service.getCharacteristic(TX_CHARACTERISTIC_UUID);
+          device.addEventListener("gattservicedisconnected", onDisconnected);
 
-          await rxChar.startNotifications();
-          rxChar.addEventListener(
-            "characteristicvaluechanged",
-            handleTelemetry,
-          );
+          bleServer = await device.gatt.connect();
+          const service = await bleServer.getPrimaryService(SERVICE_UUID);
+          const characteristic = await service.getCharacteristic(SENSOR_CHAR_UUID);
 
-          // Adjust Interface States
-          connectBtn.classList.add("hidden");
-          disconnectBtn.classList.remove("hidden");
-          syncHardwareBtn.disabled = false;
-          document.getElementById("conn-status").innerText = "● Connected";
-          document.getElementById("conn-status").style.color = "green";
-          alertBox.style.display = "none";
+          await characteristic.startNotifications();
+          
+          characteristic.addEventListener("characteristicvaluechanged", (e) => {
+            retrievedValue.innerHTML = new TextDecoder().decode(e.target.value);
+            timestampContainer.innerHTML = new Date().toLocaleTimeString();
+          });
 
-          bleDevice.addEventListener("gattserverdisconnected", onDisconnected);
+          updateStatus("Connected", "#24af37");
+          deviceNameDisplay.innerHTML = device.name;
+          autoReconnect = true; // Enable auto-reconnect logic if signal drops
 
-          // Automatically flash configurations to hardware immediately upon connection
-          sendConfigToHardware();
-        } catch (e) {
-          console.log("Connection canceled or rejected: ", e);
+        } catch (err) {
+          console.log("Error: " + err);
+          updateStatus("Disconnected", "#d13a30");
         }
       }
 
-      // --- TRANSMIT COMMANDS OUT TO ESP32 ---
-      async function sendConfigToHardware() {
-        if (!txChar) return;
-
-        // Format an optimized structural string token that the microcontroller can unpack cleanly
-        // Example output string: CMD:ROCKET,-4\n
-        const cmdString = `CMD:${vType.value},${tzInput.value}\n`;
-        let encoder = new TextEncoder();
-
-        try {
-          await txChar.writeValueWithoutResponse(encoder.encode(cmdString));
-          console.log(
-            "Transmitted synchronization packet to hardware: " + cmdString,
-          );
-        } catch (error) {
-          console.log("Transmission failure on hardware sync: ", error);
+      function onDisconnected(event) {
+        const name = event.target.name;
+        console.log("Device " + name + " disconnected.");
+        
+        if (autoReconnect) {
+          updateStatus("Reconnecting...", "#ff9800");
+          // Attempt to reconnect every 3 seconds
+          setTimeout(() => {
+            if (autoReconnect) connectToDevice();
+          }, 3000);
+        } else {
+          updateStatus("Disconnected", "#d13a30");
+          deviceNameDisplay.innerHTML = "None";
         }
       }
 
-      syncHardwareBtn.addEventListener("click", sendConfigToHardware);
+      connectButton.addEventListener("click", connectToDevice);
 
-      function onDisconnected() {
-        alertBox.style.display = "block";
-        syncHardwareBtn.disabled = true;
-        document.getElementById("conn-status").innerText = "● Offline";
-        document.getElementById("conn-status").style.color = "red";
-        connectBtn.classList.remove("hidden");
-        disconnectBtn.classList.add("hidden");
-      }
-
-      function handleTelemetry(event) {
-        let decoder = new TextDecoder("utf-8");
-        let data = decoder.decode(event.target.value);
-
-        let parts = data.split(",");
-        if (parts.length < 10) return;
-
-        const gpsAlt = parts[3];
-        const baroAlt = parts[15];
-        const state = parts[18] || "FLIGHT";
-
-        document.getElementById("gpsAlt").innerText = gpsAlt;
-        document.getElementById("baroAlt").innerText = baroAlt;
-        document.getElementById("rocketState").innerText = state;
-
-        if (vType.value !== "ROCKET") {
-          document.getElementById("liveSpeed").innerText = parts[11] + " mph";
+      disconnectButton.addEventListener("click", () => {
+        if (bleServer && bleServer.connected) {
+          autoReconnect = false; // Disable auto-reconnect for manual disconnects
+          bleServer.disconnect();
+          updateStatus("Disconnected", "#d13a30");
+          deviceNameDisplay.innerHTML = "None";
         }
-
-        if (speechEnabled && Math.round(baroAlt) % 100 === 0) {
-          speak("Altitude " + Math.round(baroAlt));
-        }
-
-        flightData.push(data);
-      }
-
-      function speak(text) {
-        let msg = new SpeechSynthesisUtterance(text);
-        window.speechSynthesis.speak(msg);
-      }
-
-      function downloadCSV() {
-        const blob = new Blob([flightData.join("\n")], { type: "text/csv" });
-        saveFile(blob, "FlightData.csv");
-      }
-
-      function downloadKML() {
-        let kmlHeader = `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Flight Path</name><Placemark><LineString><coordinates>`;
-        let coords = flightData
-          .map((line) => {
-            let p = line.split(",");
-            if (p.length < 4) return "";
-            return `${p[2]},${p[1]},${p[3]}`;
-          })
-          .join(" ");
-        let kmlFooter = `</coordinates></LineString></Placemark></Document></kml>`;
-
-        const blob = new Blob([kmlHeader + coords + kmlFooter], {
-          type: "application/vnd.google-earth.kml+xml",
-        });
-        saveFile(blob, "FlightPath.kml");
-      }
-
-      function saveFile(blob, filename) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        a.click();
-      }
-
-      connectBtn.addEventListener("click", connectBLE);
-      disconnectBtn.addEventListener("click", () =>
-        bleDevice.gatt.disconnect(),
-      );
+      });
     </script>
   </body>
 </html>
