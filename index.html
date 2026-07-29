@@ -178,7 +178,7 @@
       let phoneHeading = 0;
       let targetCoords = null;
 
-      const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+      const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"; 
       const RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
       const TX_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 
@@ -212,10 +212,11 @@
 
       // --- PAGE VIEW SWITCHER LOGIC ---
 function switchPage(pageId) {
+    // Toggle view containers
     document.getElementById("page-telemetry").classList.toggle("hidden", pageId !== "telemetry");
     document.getElementById("page-tracker").classList.toggle("hidden", pageId !== "tracker");
     
-    // Toggle active tab classes
+    // Toggle active classes on your bottom nav tab items
     document.getElementById("tab-telemetry").classList.toggle("active", pageId === "telemetry");
     document.getElementById("tab-tracker").classList.toggle("active", pageId === "tracker");
 }
@@ -227,15 +228,16 @@ const connStatus = document.getElementById("conn-status");
 const gpsAltEl = document.getElementById("gpsAlt");
 const baroAltEl = document.getElementById("baroAlt");
 const rocketStateEl = document.getElementById("rocketState");
-const liveSpeedEl = document.getElementById("liveSpeed");
+const targetDistEl = document.getElementById("targetDist");
+const targetBearingEl = document.getElementById("targetBearing");
+const directionArrowEl = document.getElementById("directionArrow");
 
 // Bluetooth Connection Event Handlers
 connectBtn.addEventListener("click", async () => {
     try {
-        //console.log("Requesting FollowMe Bluetooth Device...");
+        console.log("Requesting FollowMe Bluetooth Device...");
         bleDevice = await navigator.bluetooth.requestDevice({
-            //filters: [{ namePrefix: "FollowMe" }, { services: [SERVICE_UUID] }],
-            acceptAllDevices: true,
+            filters: [{ namePrefix: "FollowMe" }, { services: [SERVICE_UUID] }],
             optionalServices: [SERVICE_UUID]
         });
 
@@ -247,17 +249,16 @@ connectBtn.addEventListener("click", async () => {
         console.log("Getting Primary Service...");
         const service = await server.getPrimaryService(SERVICE_UUID);
 
-        console.log("Getting RX Characteristic (for receiving data)...");
+        console.log("Getting RX Characteristic...");
         rxChar = await service.getCharacteristic(RX_CHARACTERISTIC_UUID);
 
-        // Start listening to the txPacket notify streams
         await rxChar.startNotifications();
         rxChar.addEventListener('characteristicvaluechanged', handleDataNotification);
 
-        console.log("Getting TX Characteristic (for sending data)...");
+        console.log("Getting TX Characteristic...");
         txChar = await service.getCharacteristic(TX_CHARACTERISTIC_UUID);
 
-        // UI state transformation upon connection success
+        // Update UI upon successful connection
         connStatus.textContent = "● Online";
         connStatus.style.color = "var(--success)";
         connectBtn.classList.add("hidden");
@@ -266,7 +267,7 @@ connectBtn.addEventListener("click", async () => {
         alertBox.style.display = "none";
 
     } catch (error) {
-        console.error("Bluetooth pairing rejected or failed: ", error);
+        console.error("Bluetooth connection failed: ", error);
     }
 });
 
@@ -283,7 +284,7 @@ function onDisconnected() {
     connectBtn.classList.remove("hidden");
     disconnectBtn.classList.add("hidden");
     syncHardwareBtn.setAttribute("disabled", "true");
-    alertBox.style.display = "block"; // Triggers link loss alert
+    alertBox.style.display = "block";
 }
 
 // --- CORE PACKET PARSER ENGINE ---
