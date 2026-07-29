@@ -169,177 +169,213 @@
     </nav>
 
     <script>
-      let bleDevice, rxChar, txChar;
-      let flightData = [];
-      let speechEnabled = false;
+      // --- STATE MATRIX VARIABLES ---
+let bleDevice = null;
+let rxChar = null;
+let txChar = null;
+let flightData = [];
+let speechEnabled = false;
 
-      // Variables tracking Phone and Remote Hardware GPS
-      let phoneCoords = null;
-      let phoneHeading = 0;
-      let targetCoords = null;
+let phoneCoords = null;
+let phoneHeading = 0;
+let targetCoords = null;
 
-      const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e"; 
-      const RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
-      const TX_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+// UUID Definitions (Must remain completely lowercase for Web BLE standards)
+const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+const RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+const TX_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 
-      const connectBtn = document.getElementById("connectBtn");
-      const disconnectBtn = document.getElementById("disconnectBtn");
-      const syncHardwareBtn = document.getElementById("syncHardwareBtn");
-      const alertBox = document.getElementById("lost-connection-alert");
-      const vType = document.getElementById("vehicleType");
-      const tzInput = document.getElementById("tzOffset");
+// UI Layout Hooks
+const connectBtn = document.getElementById("connectBtn");
+const disconnectBtn = document.getElementById("disconnectBtn");
+const syncHardwareBtn = document.getElementById("syncHardwareBtn");
+const alertBox = document.getElementById("lost-connection-alert");
+const vType = document.getElementById("vehicleType");
+const tzInput = document.getElementById("tzOffset");
 
-      window.addEventListener("DOMContentLoaded", () => {
-        if (localStorage.getItem("followme_vType")) vType.value = localStorage.getItem("followme_vType");
-        if (localStorage.getItem("followme_tz")) tzInput.value = localStorage.getItem("followme_tz");
-        updateUILayout();
-        initPhoneTracking();
-      });
-
-      vType.addEventListener("change", () => {
-        localStorage.setItem("followme_vType", vType.value);
-        updateUILayout();
-      });
-      tzInput.addEventListener("change", () => {
-        localStorage.setItem("followme_tz", tzInput.value);
-      });
-
-      function updateUILayout() {
-        const type = vType.value;
-        document.getElementById("speed-container").classList.toggle("hidden", type === "ROCKET");
-        speechEnabled = type === "ROCKET";
-      }
-
-      // --- PAGE VIEW SWITCHER LOGIC ---
-function switchPage(pageId) {
-    // Toggle view containers
-    document.getElementById("page-telemetry").classList.toggle("hidden", pageId !== "telemetry");
-    document.getElementById("page-tracker").classList.toggle("hidden", pageId !== "tracker");
-    
-    // Toggle active classes on your bottom nav tab items
-    document.getElementById("tab-telemetry").classList.toggle("active", pageId === "telemetry");
-    document.getElementById("tab-tracker").classList.toggle("active", pageId === "tracker");
-}
-
-// --- WEB BLUETOOTH HUB INTEGRATION ---
-
-// DOM Elements
+// DOM Target Output Elements
 const connStatus = document.getElementById("conn-status");
 const gpsAltEl = document.getElementById("gpsAlt");
 const baroAltEl = document.getElementById("baroAlt");
 const rocketStateEl = document.getElementById("rocketState");
+const liveSpeedEl = document.getElementById("liveSpeed");
 const targetDistEl = document.getElementById("targetDist");
 const targetBearingEl = document.getElementById("targetBearing");
 const directionArrowEl = document.getElementById("directionArrow");
 
-// Bluetooth Connection Event Handlers
-connectBtn.addEventListener("click", async () => {
+// --- INITIALIZATION GATEWAYS ---
+window.addEventListener("DOMContentLoaded", () => {
     try {
-        console.log("Requesting FollowMe Bluetooth Device...");
-        bleDevice = await navigator.bluetooth.requestDevice({
-            filters: [{ namePrefix: "FollowMe" }, { services: [SERVICE_UUID] }],
-            optionalServices: [SERVICE_UUID]
-        });
-
-        bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
-
-        console.log("Connecting to GATT Server...");
-        const server = await bleDevice.gatt.connect();
-
-        console.log("Getting Primary Service...");
-        const service = await server.getPrimaryService(SERVICE_UUID);
-
-        console.log("Getting RX Characteristic...");
-        rxChar = await service.getCharacteristic(RX_CHARACTERISTIC_UUID);
-
-        await rxChar.startNotifications();
-        rxChar.addEventListener('characteristicvaluechanged', handleDataNotification);
-
-        console.log("Getting TX Characteristic...");
-        txChar = await service.getCharacteristic(TX_CHARACTERISTIC_UUID);
-
-        // Update UI upon successful connection
-        connStatus.textContent = "● Online";
-        connStatus.style.color = "var(--success)";
-        connectBtn.classList.add("hidden");
-        disconnectBtn.classList.remove("hidden");
-        syncHardwareBtn.removeAttribute("disabled");
-        alertBox.style.display = "none";
-
-    } catch (error) {
-        console.error("Bluetooth connection failed: ", error);
+        if (localStorage.getItem("followme_vType") && vType) {
+            vType.value = localStorage.getItem("followme_vType");
+        }
+        if (localStorage.getItem("followme_tz") && tzInput) {
+            tzInput.value = localStorage.getItem("followme_tz");
+        }
+        updateUILayout();
+        initPhoneTracking(); 
+    } catch (e) {
+        console.warn("Initialization pipeline wrapper bypassed safety catch: ", e);
     }
 });
 
-disconnectBtn.addEventListener("click", () => {
-    if (bleDevice && bleDevice.gatt.connected) {
-        bleDevice.gatt.disconnect();
-    }
-});
-
-function onDisconnected() {
-    console.log("BLE Link Dropped.");
-    connStatus.textContent = "● Offline";
-    connStatus.style.color = "var(--danger)";
-    connectBtn.classList.remove("hidden");
-    disconnectBtn.classList.add("hidden");
-    syncHardwareBtn.setAttribute("disabled", "true");
-    alertBox.style.display = "block";
+if (vType) {
+    vType.addEventListener("change", () => {
+        localStorage.setItem("followme_vType", vType.value);
+        updateUILayout();
+    });
+}
+if (tzInput) {
+    tzInput.addEventListener("change", () => {
+        localStorage.setItem("followme_tz", tzInput.value);
+    });
 }
 
-// --- CORE PACKET PARSER ENGINE ---
-function handleDataNotification(event) {
-    // Decode incoming binary uint8 bytes buffer into a clear UTF-8 JS String
-    const decoder = new TextDecoder('utf-8');
-    const rawString = decoder.decode(event.target.value);
-    console.log("Packet Received: ", rawString);
+function updateUILayout() {
+    if (!vType) return;
+    const type = vType.value;
+    const speedContainer = document.getElementById("speed-container");
+    if (speedContainer) {
+        speedContainer.classList.toggle("hidden", type === "ROCKET");
+    }
+    speechEnabled = (type === "ROCKET");
+}
 
-    // Parsing Strategy: "Alt:124.5|Baro_Alt:122.1|Flight_State:2..."
-    const dataPoints = rawString.split('|');
-    const parsedData = {};
+// --- PAGE SWITCHER ACTION ENGINE ---
+function switchPage(pageId) {
+    const pageTelemetry = document.getElementById("page-telemetry");
+    const pageTracker = document.getElementById("page-tracker");
+    const tabTelemetry = document.getElementById("tab-telemetry");
+    const tabTracker = document.getElementById("tab-tracker");
 
-    dataPoints.forEach(point => {
-        const parts = point.split(':');
-        if (parts.length === 2) {
-            parsedData[parts[0].trim()] = parts[1].trim();
+    if (pageTelemetry) pageTelemetry.classList.toggle("hidden", pageId !== "telemetry");
+    if (pageTracker) pageTracker.classList.toggle("hidden", pageId !== "tracker");
+    if (tabTelemetry) tabTelemetry.classList.toggle("active", pageId === "telemetry");
+    if (tabTracker) tabTracker.classList.toggle("active", pageId === "tracker");
+}
+
+// --- WEB BLUETOOTH CONNECTION LOGIC ---
+if (connectBtn) {
+    connectBtn.addEventListener("click", async () => {
+        try {
+            console.log("Scanning for FollowMe Hardware arrays...");
+            
+            // Broad compatibility fallback filter to guarantee the picker window maps up
+            bleDevice = await navigator.bluetooth.requestDevice({
+                filters: [{ services: [SERVICE_UUID] }],
+                optionalServices: [SERVICE_UUID]
+            });
+
+            bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+            console.log("Connecting to GATT Profile Server...");
+            const server = await bleDevice.gatt.connect();
+
+            console.log("Binding Primary Transceiver Service...");
+            const service = await server.getPrimaryService(SERVICE_UUID);
+
+            console.log("Configuring RX Stream Characteristic notifications...");
+            rxChar = await service.getCharacteristic(RX_CHARACTERISTIC_UUID);
+            await rxChar.startNotifications();
+            rxChar.addEventListener('characteristicvaluechanged', handleDataNotification);
+
+            console.log("Configuring TX Characteristic registers...");
+            txChar = await service.getCharacteristic(TX_CHARACTERISTIC_UUID);
+
+            // Change UI layout states cleanly
+            if (connStatus) {
+                connStatus.textContent = "● Online";
+                connStatus.style.color = "var(--success)";
+            }
+            if (connectBtn) connectBtn.classList.add("hidden");
+            if (disconnectBtn) disconnectBtn.classList.remove("hidden");
+            if (syncHardwareBtn) syncHardwareBtn.removeAttribute("disabled");
+            if (alertBox) alertBox.style.display = "none";
+
+            console.log("FollowMe Ground Link Fully Active!");
+
+        } catch (error) {
+            console.error("Bluetooth hardware discovery sequence broken: ", error);
+            alert("Bluetooth connection could not be established. Ensure Bluetooth is turned on and your device is broadcasting.");
         }
     });
+}
 
-    // Update Telemetry Panel UI Fields Safely
-    if (parsedData["Alt"] !== undefined) gpsAltEl.textContent = parsedData["Alt"];
-    if (parsedData["Baro_Alt"] !== undefined) baroAltEl.textContent = parsedData["Baro_Alt"];
-    
-    if (parsedData["Flight_State"] !== undefined) {
-        rocketStateEl.textContent = getFlightStateLabel(parsedData["Flight_State"]);
-    }
-
-    // Save Target GPS Coordinate data mapping to your script's global objects for mapping/compass functions
-    if (parsedData["Lat"] !== undefined && parsedData["Lon"] !== undefined) {
-        targetCoords = {
-            latitude: parseFloat(parsedData["Lat"]),
-            longitude: parseFloat(parsedData["Lon"])
-        };
-        // Trigger your local math updates for the live direction arrow vector calculation here
-        if (typeof updateTrackingMath === "function") updateTrackingMath(); 
-    }
-
-    if (parsedData["Volt"] !== undefined) {
-        // Optional: Log battery changes or update structural arrays
-        console.log(`Hardware Voltage state: ${parsedData["Volt"]}V`);
-    }
-
-    // Capture payload internally for CSV/KML Export tools
-    flightData.push({
-        timestamp: new Date().toLocaleTimeString(),
-        gps_altitude: parsedData["Alt"] || 0,
-        baro_altitude: parsedData["Baro_Alt"] || 0,
-        flight_state: parsedData["Flight_State"] || 0,
-        latitude: parsedData["Lat"] || 0,
-        longitude: parsedData["Lon"] || 0
+if (disconnectBtn) {
+    disconnectBtn.addEventListener("click", () => {
+        if (bleDevice && bleDevice.gatt.connected) {
+            bleDevice.gatt.disconnect();
+        }
     });
 }
 
-// Helper to convert state machine numerical IDs into readable UI names
+function onDisconnected() {
+    console.log("BLE Stream Interrupted Safely.");
+    if (connStatus) {
+        connStatus.textContent = "● Offline";
+        connStatus.style.color = "var(--danger)";
+    }
+    if (connectBtn) connectBtn.classList.remove("hidden");
+    if (disconnectBtn) disconnectBtn.classList.add("hidden");
+    if (syncHardwareBtn) syncHardwareBtn.setAttribute("disabled", "true");
+    if (alertBox) alertBox.style.display = "block";
+}
+
+// --- CORE PAYLOAD PACKET PARSER ---
+function handleDataNotification(event) {
+    try {
+        const decoder = new TextDecoder('utf-8');
+        const rawString = decoder.decode(event.target.value);
+        console.log("Incoming Stream Packet Array: ", rawString);
+
+        const dataPoints = rawString.split('|');
+        const parsedData = {};
+
+        dataPoints.forEach(point => {
+            const parts = point.split(':');
+            if (parts.length === 2) {
+                parsedData[parts[0].trim()] = parts[1].trim();
+            }
+        });
+
+        // Safe telemetry assignments to DOM wrappers
+        if (parsedData["Alt"] && gpsAltEl) gpsAltEl.textContent = parsedData["Alt"];
+        if (parsedData["Baro_Alt"] && baroAltEl) baroAltEl.textContent = parsedData["Baro_Alt"];
+        if (parsedData["Flight_State"] && rocketStateEl) {
+            rocketStateEl.textContent = getFlightStateLabel(parsedData["Flight_State"]);
+        }
+        if (parsedData["Speed"] && liveSpeedEl) {
+            liveSpeedEl.textContent = parseFloat(parsedData["Speed"]).toFixed(1) + " ft/s";
+        }
+        if (parsedData["Distance"] && targetDistEl) {
+            targetDistEl.textContent = parsedData["Distance"] + " ft";
+        }
+        if (parsedData["Course"] && targetBearingEl) {
+            targetBearingEl.textContent = parsedData["Course"] + "°";
+            const bearingFloat = parseFloat(parsedData["Course"]);
+            if (!isNaN(bearingFloat) && directionArrowEl) {
+                directionArrowEl.style.transform = `rotate(${bearingFloat}deg)`;
+            }
+        }
+
+        // Commit snapshot directly into matrix array logger for analytics exports
+        flightData.push({
+            timestamp: new Date().toISOString(),
+            gps_altitude: parsedData["Alt"] || "0.0",
+            baro_altitude: parsedData["Baro_Alt"] || "0.0",
+            flight_state: parsedData["Flight_State"] || "0",
+            latitude: parsedData["Lat"] || "0.000000",
+            longitude: parsedData["Lon"] || "0.000000",
+            distance: parsedData["Distance"] || "0.0",
+            course: parsedData["Course"] || "0.0",
+            speed: parsedData["Speed"] || "0.0"
+        });
+
+    } catch (err) {
+        console.error("Payload data notification parsing failure: ", err);
+    }
+}
+
 function getFlightStateLabel(stateNumber) {
     const states = {
         "0": "STANDBY",
@@ -352,7 +388,40 @@ function getFlightStateLabel(stateNumber) {
     return states[stateNumber] || `STATE_${stateNumber}`;
 }
 
-// Placeholders for your file generation routines so buttons don't crash
-function downloadCSV() { console.log("Exporting array data to CSV format..."); }
-function downloadKML() { console.log("Exporting track profile to Google Earth KML..."); }
-function initPhoneTracking() { console.log("Initializing device geolocation pipeline..."); }
+// --- FILE EXPORT ARCHITECTURE UNITS ---
+function downloadCSV() {
+    if (flightData.length === 0) {
+        alert("No tracking array logs captured to build spreadsheets yet.");
+        return;
+    }
+    let csvContent = "Timestamp,GPS Altitude,Baro Altitude,Flight State,Latitude,Longitude,Distance,Course,Speed_ft_s\n";
+    flightData.forEach(row => {
+        csvContent += `${row.timestamp},${row.gps_altitude},${row.baro_altitude},${row.flight_state},${row.latitude},${row.longitude},${row.distance},${row.course},${row.speed}\n`;
+    });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `FollowMe_Telemetry_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function downloadKML() {
+    if (flightData.length === 0) {
+        alert("No flight path coordinates recorded yet to map.");
+        return;
+    }
+
+    const validPoints = flightData.filter(row => 
+        parseFloat(row.latitude) !== 0 && parseFloat(row.longitude) !== 0
+    );
+
+    if (validPoints.length === 0) {
+        alert("No valid GPS tracks recorded yet.");
+        return;
+    }
+
+    let launchLat = parseFloat(validPoints[0].latitude);
+    let launchLon = parseFloat(validPoints[0].longitude);
