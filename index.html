@@ -1,24 +1,61 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FollowMe Master Command Center</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FollowMe Ground Station</title>
+
     <style>
       :root {
         --primary: #007bff;
         --success: #28a745;
         --danger: #dc3545;
-        --dark: #333;
+        --dark: #212529;
         --light: #f8f9fa;
       }
+
       body {
-        font-family: "Segoe UI", Tahoma, sans-serif;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
         background: #e9ecef;
         margin: 0;
-        padding: 15px 15px 75px 15px; /* Added bottom padding for navigation bar */
+        padding: 15px;
+        color: var(--dark);
       }
 
+      /* Navigation Tabs */
+      .nav-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+
+      .nav-btn {
+        flex: 1;
+        padding: 12px;
+        background: #495057;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-weight: bold;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+
+      .nav-btn.active {
+        background: var(--primary);
+      }
+
+      /* Tab Views */
+      .page-view {
+        display: none;
+      }
+
+      .page-view.active {
+        display: block;
+      }
+
+      /* Card Containers */
       .card {
         background: white;
         border-radius: 8px;
@@ -26,88 +63,50 @@
         margin-bottom: 15px;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
       }
+
       .grid-2 {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 10px;
       }
 
-      button {
-        padding: 10px 15px;
+      /* UI Control Buttons */
+      .btn {
+        padding: 12px 20px;
         border: none;
-        border-radius: 5px;
-        cursor: pointer;
+        border-radius: 6px;
         font-weight: bold;
-      }
-      .btn-connect {
-        background: var(--primary);
-        color: white;
+        font-size: 1rem;
+        cursor: pointer;
         width: 100%;
+        margin-bottom: 10px;
       }
+
+      .btn-connect {
+        background: var(--success);
+        color: white;
+      }
+
       .btn-disconnect {
         background: var(--danger);
         color: white;
-        width: 100%;
-      }
-      .btn-track {
-        background: #6f42c1;
-        color: white;
-        width: 100%;
-        margin-top: 10px;
-        font-size: 1rem;
-      }
-      .btn-save {
-        background: var(--dark);
-        color: white;
-        margin-top: 10px;
-        width: 100%;
-      }
-      .btn-cmd {
-        background: var(--success);
-        color: white;
-        width: 100%;
-        margin-top: 5px;
       }
 
-      .big-data {
-        font-size: 2.2rem;
-        font-weight: bold;
-        color: var(--primary);
-        display: block;
-      }
       .label {
         font-size: 0.8rem;
         color: #666;
         text-transform: uppercase;
-        margin-top: 5px;
         display: block;
-      }
-      .status-pill {
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 0.8rem;
-        background: #eee;
+        margin-bottom: 3px;
       }
 
-      #lost-connection-alert {
-        display: none;
-        color: var(--danger);
+      .val-display {
+        font-size: 1.4rem;
         font-weight: bold;
-        text-align: center;
-        margin: 10px 0;
-      }
-      .hidden {
-        display: none !important;
-      }
-      select,
-      input {
-        padding: 8px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        box-sizing: border-box;
+        color: var(--dark);
       }
 
-      /* Tracker Element Styling */
+      /* Compass & Tracker UI */
       .tracker-container {
         display: flex;
         flex-direction: column;
@@ -115,6 +114,7 @@
         justify-content: center;
         padding: 10px;
       }
+
       .compass-ring {
         width: 180px;
         height: 180px;
@@ -126,6 +126,7 @@
         justify-content: center;
         margin: 20px 0;
       }
+
       .compass-arrow {
         width: 0;
         height: 0;
@@ -135,540 +136,475 @@
         position: absolute;
         transform: rotate(0deg);
         transform-origin: center center;
-        transition: transform 0.2s ease-out;
-      }
-      .tracker-stats {
-        width: 100%;
-        text-align: center;
-        font-size: 0.9rem;
-        color: #444;
+        transition: transform 0.1s ease-out;
       }
 
-      /* Page / Tab Layout Navigation */
-      .nav-bar {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 60px;
-        background: white;
-        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
-        z-index: 1000;
+      .status-dot {
+        font-size: 0.85rem;
+        font-weight: bold;
       }
-      .nav-tab {
-        background: none;
-        color: #666;
-        font-size: 0.9rem;
-        padding: 10px 20px;
-        width: 50%;
-        border-radius: 0;
-      }
-      .nav-tab.active {
-        color: var(--primary);
-        border-bottom: 3px solid var(--primary);
+
+      /* Raw Serial Terminal Log */
+      #rawLog {
+        background: #1e1e1e;
+        color: #00ff66;
+        font-family: monospace;
+        font-size: 0.85rem;
+        padding: 10px;
+        height: 100px;
+        overflow-y: auto;
+        border-radius: 5px;
+        word-break: break-all;
       }
     </style>
   </head>
   <body>
-    <!-- ================= PAGE 1: COMMAND CENTER ================= -->
-    <div id="page-telemetry" class="page-view">
-      <div
-        class="card"
-        style="
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        "
+    <!-- TOP TAB SWITCHER -->
+    <div class="nav-tabs">
+      <button
+        id="btn-cmd"
+        class="nav-btn active"
+        onclick="switchTab('dashboard')"
       >
-        <div>
-          <strong style="font-size: 1.2rem; display: block"
-            >FollowMe Rautronics Hobbies</strong
-          >
-          <span style="font-size: 0.85rem; color: #666"
-            >Hardware: v2.1 | Firmware: v6.02</span
-          >
-        </div>
-        <span id="conn-status" style="font-weight: bold; color: var(--danger)"
-          >● Offline</span
-        >
-      </div>
+        Command Center
+      </button>
+      <button id="btn-trk" class="nav-btn" onclick="switchTab('tracker')">
+        Rocket Tracker
+      </button>
+    </div>
 
+    <!-- ==================================================== -->
+    <!-- VIEW 1: COMMAND CENTER (BLE Controls & Telemetry)    -->
+    <!-- ==================================================== -->
+    <div id="page-dashboard" class="page-view active">
+      <!-- BLE Connection Control Card -->
       <div class="card">
-        <button id="connectBtn" class="btn-connect">Connect to FollowMe</button>
-        <button id="disconnectBtn" class="btn-disconnect hidden">
-          Disconnect Ground Station
-        </button>
-
-        <button
-          id="trackLandingBtn"
-          class="btn-track"
-          onclick="switchPage('tracker')"
-        >
-          🎯 Track Landing Location
-        </button>
-
-        <div id="lost-connection-alert">
-          ⚠️ LINK LOSS: RECONNECTING TO DONGLE...
-        </div>
-
         <div
-          id="controls-panel"
           style="
-            margin-top: 15px;
-            border-top: 1px solid #eee;
-            padding-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
           "
         >
-          <h4 style="margin: 0 0 10px 0; color: var(--dark)">
-            Remote Hardware Configuration
-          </h4>
-          <div class="grid-2">
-            <div>
-              <label class="label">Change Vehicle Profile</label>
-              <select id="vehicleType" style="width: 100%">
-                <option value="ROCKET">Rocket Mode</option>
-                <option value="DRONE">Drone Mode</option>
-                <option value="ROVER">Rover Mode</option>
-              </select>
-            </div>
-            <div>
-              <label class="label">Time Zone Offset</label>
-              <input
-                type="number"
-                id="tzOffset"
-                value="-4"
-                style="width: 100%"
-              />
-            </div>
-          </div>
-          <button id="syncHardwareBtn" class="btn-cmd" disabled>
-            Sync Settings to Hardware
+          <strong style="font-size: 1.2rem">BLE Connection</strong>
+          <span id="bleStatus" class="status-dot" style="color: var(--danger)"
+            >● Disconnected</span
+          >
+        </div>
+
+        <div class="grid-2">
+          <button
+            id="btnConnect"
+            class="btn btn-connect"
+            onclick="connectBLE()"
+          >
+            Connect BLE
+          </button>
+          <button
+            id="btnDisconnect"
+            class="btn btn-disconnect"
+            onclick="disconnectBLE()"
+            disabled
+          >
+            Disconnect
           </button>
         </div>
       </div>
 
+      <!-- Telemetry Data Display Grid -->
       <div class="card">
+        <strong style="font-size: 1.1rem; display: block; margin-bottom: 10px"
+          >Live Telemetry</strong
+        >
+
         <div class="grid-2">
-          <div>
+          <div class="card" style="background: var(--light); margin: 0">
             <span class="label">GPS Altitude</span>
-            <span id="gpsAlt" class="big-data">0.0</span>
+            <span id="valGpsAlt" class="val-display">--- m</span>
           </div>
-          <div>
-            <span class="label">Barometric Altitude</span>
-            <span id="baroAlt" class="big-data">0.0</span>
+
+          <div class="card" style="background: var(--light); margin: 0">
+            <span class="label">Baro Altitude</span>
+            <span id="valBaroAlt" class="val-display">--- m</span>
+          </div>
+
+          <div class="card" style="background: var(--light); margin: 0">
+            <span class="label">Flight State</span>
+            <span id="valFlightState" class="val-display">---</span>
+          </div>
+
+          <div class="card" style="background: var(--light); margin: 0">
+            <span class="label">GPS Speed</span>
+            <span id="valSpeed" class="val-display">--- m/s</span>
+          </div>
+
+          <div class="card" style="background: var(--light); margin: 0">
+            <span class="label">Latitude</span>
+            <span id="valLat" class="val-display">---</span>
+          </div>
+
+          <div class="card" style="background: var(--light); margin: 0">
+            <span class="label">Longitude</span>
+            <span id="valLon" class="val-display">---</span>
           </div>
         </div>
+      </div>
+
+      <!-- Raw Stream Console Output -->
+      <div class="card">
+        <span class="label">Raw BLE Stream</span>
+        <div id="rawLog">Awaiting BLE connection...</div>
+      </div>
+    </div>
+
+    <!-- ==================================================== -->
+    <!-- VIEW 2: ROCKET TRACKER (Direction Pointer & Compass) -->
+    <!-- ==================================================== -->
+    <div id="page-tracker" class="page-view">
+      <div class="card">
         <div
           style="
-            margin-top: 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
           "
         >
-          <div>
-            <span class="label">Profile State</span>
-            <span id="rocketState" class="status-pill">STANDBY</span>
-          </div>
-          <div id="speed-container" class="hidden">
-            <span class="label">Ground Speed</span>
-            <span id="liveSpeed" style="font-weight: bold; font-size: 1.1rem"
-              >0.0 mph</span
-            >
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <span class="label">Flight Logging Storage</span>
-        <div class="grid-2">
-          <button class="btn-save" onclick="downloadCSV()">
-            Export Graph CSV
-          </button>
-          <button class="btn-save" onclick="downloadKML()">
-            Export Earth KML
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ================= PAGE 2: TRACKING MODE ================= -->
-    <div id="page-tracker" class="page-view hidden">
-      <div class="card">
-        <div class="tracker-container">
+          <strong style="font-size: 1.2rem">Direction Pointer</strong>
           <span
-            class="label"
-            style="
-              text-align: center;
-              font-size: 1rem;
-              font-weight: bold;
-              color: var(--dark);
-            "
-            >Live Target Pointer</span
+            id="trackerStatus"
+            class="status-dot"
+            style="color: var(--danger)"
+            >● Awaiting GPS Data</span
           >
+        </div>
 
+        <div class="tracker-container">
           <div class="compass-ring">
             <div id="directionArrow" class="compass-arrow"></div>
           </div>
 
-          <div class="tracker-stats">
-            <div
-              class="grid-2"
-              style="background: #f1f3f5; padding: 15px; border-radius: 6px"
-            >
-              <div>
-                <span class="label">Distance to Target</span>
-                <span
-                  id="targetDist"
-                  style="
-                    font-size: 1.5rem;
-                    font-weight: bold;
-                    color: var(--primary);
-                  "
-                  >---</span
-                >
+          <div class="tracker-stats" style="width: 100%">
+            <div class="grid-2">
+              <div
+                class="card"
+                style="background: var(--light); margin: 0; text-align: center"
+              >
+                <span class="label">Distance</span>
+                <span id="targetDist" class="val-display">---</span>
               </div>
-              <div>
-                <span class="label">Target Compass Bearing</span>
-                <span
-                  id="targetBearing"
-                  style="
-                    font-size: 1.5rem;
-                    font-weight: bold;
-                    color: var(--dark);
-                  "
-                  >---</span
-                >
+              <div
+                class="card"
+                style="background: var(--light); margin: 0; text-align: center"
+              >
+                <span class="label">Bearing</span>
+                <span id="targetBearing" class="val-display">---</span>
               </div>
             </div>
             <small
-              id="gpsStatus"
-              style="color: #888; display: block; margin-top: 12px"
-              >Awaiting Phone GPS & Heading permissions...</small
+              id="phoneGpsStatus"
+              style="
+                color: #888;
+                display: block;
+                margin-top: 15px;
+                text-align: center;
+              "
             >
+              Initializing Phone Sensors...
+            </small>
           </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="label">Target Coordinates</span>
+        <div class="grid-2" style="margin-top: 5px">
+          <div>Latitude: <strong id="tgtLat">---</strong></div>
+          <div>Longitude: <strong id="tgtLon">---</strong></div>
         </div>
       </div>
     </div>
 
-    <!-- ================= STICKY BOTTOM NAVIGATION BAR ================= -->
-    <nav class="nav-bar">
-      <button
-        id="tab-telemetry"
-        class="nav-tab active"
-        onclick="switchPage('telemetry')"
-      >
-        📊 Main Panel
-      </button>
-      <button id="tab-tracker" class="nav-tab" onclick="switchPage('tracker')">
-        🎯 Tracking Mode
-      </button>
-    </nav>
-
+    <!-- ==================================================== -->
+    <!-- JAVASCRIPT: BLE PIPELINE & DIRECTIONAL LOGIC        -->
+    <!-- ==================================================== -->
     <script>
-      // --- STATE MATRIX VARIABLES ---
-      let bleDevice = null;
-      let rxChar = null;
-      let txChar = null;
-      let flightData = [];
-      let speechEnabled = false;
+      // UUID Matching configuration (Standard lower-case UUIDs)
+      const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+      const RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
 
+      // Global BLE Variables
+      let bleDevice = null;
+      let rxCharacteristic = null;
+      let rxBuffer = "";
+
+      // Navigation Coordinates State
       let phoneCoords = null;
       let phoneHeading = 0;
       let targetCoords = null;
 
-      // UUID Definitions
-      const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-      const RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
-      const TX_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+      // Tab Switcher Controller
+      function switchTab(tabName) {
+        document.getElementById("page-dashboard").classList.remove("active");
+        document.getElementById("page-tracker").classList.remove("active");
+        document.getElementById("btn-cmd").classList.remove("active");
+        document.getElementById("btn-trk").classList.remove("active");
 
-      // UI Layout Hooks
-      const connectBtn = document.getElementById("connectBtn");
-      const disconnectBtn = document.getElementById("disconnectBtn");
-      const syncHardwareBtn = document.getElementById("syncHardwareBtn");
-      const alertBox = document.getElementById("lost-connection-alert");
-      const vType = document.getElementById("vehicleType");
-      const tzInput = document.getElementById("tzOffset");
+        if (tabName === "dashboard") {
+          document.getElementById("page-dashboard").classList.add("active");
+          document.getElementById("btn-cmd").classList.add("active");
+        } else if (tabName === "tracker") {
+          document.getElementById("page-tracker").classList.add("active");
+          document.getElementById("btn-trk").classList.add("active");
+          requestCompassPermission();
+        }
+      }
 
-      // DOM Target Output Elements
-      const connStatus = document.getElementById("conn-status");
-      const gpsAltEl = document.getElementById("gpsAlt");
-      const baroAltEl = document.getElementById("baroAlt");
-      const rocketStateEl = document.getElementById("rocketState");
-      const liveSpeedEl = document.getElementById("liveSpeed");
-      const targetDistEl = document.getElementById("targetDist");
-      const targetBearingEl = document.getElementById("targetBearing");
-      const directionArrowEl = document.getElementById("directionArrow");
-
-      // --- INITIALIZATION GATEWAYS ---
-      window.addEventListener("DOMContentLoaded", () => {
+      // --- WEB BLUETOOTH PIPELINE ---
+      async function connectBLE() {
         try {
-          if (localStorage.getItem("followme_vType") && vType) {
-            vType.value = localStorage.getItem("followme_vType");
-          }
-          if (localStorage.getItem("followme_tz") && tzInput) {
-            tzInput.value = localStorage.getItem("followme_tz");
-          }
-          updateUILayout();
-        } catch (e) {
-          console.warn(
-            "Initialization pipeline wrapper bypassed safety catch: ",
-            e,
+          logRaw("Requesting BLE Device...");
+          bleDevice = await navigator.bluetooth.requestDevice({
+            filters: [{ namePrefix: "FollowMe-" }],
+            optionalServices: [SERVICE_UUID],
+          });
+
+          bleDevice.addEventListener("gattserverdisconnected", onDisconnected);
+
+          logRaw("Connecting to GATT Server...");
+          const server = await bleDevice.gatt.connect();
+
+          logRaw("Getting Service...");
+          const service = await server.getPrimaryService(SERVICE_UUID);
+
+          logRaw("Getting RX Characteristic...");
+          rxCharacteristic = await service.getCharacteristic(
+            RX_CHARACTERISTIC_UUID,
           );
+
+          logRaw("Starting Notifications...");
+          await rxCharacteristic.startNotifications();
+          rxCharacteristic.addEventListener(
+            "characteristicvaluechanged",
+            handleNotifications,
+          );
+
+          // Update Status UI
+          document.getElementById("bleStatus").innerText = "● Connected";
+          document.getElementById("bleStatus").style.color = "var(--success)";
+          document.getElementById("btnConnect").disabled = true;
+          document.getElementById("btnDisconnect").disabled = false;
+
+          logRaw("BLE Link Active & Streaming!");
+        } catch (error) {
+          logRaw("BLE Error: " + error);
+          console.error("BLE Connection Error:", error);
         }
-      });
-
-      if (vType) {
-        vType.addEventListener("change", () => {
-          localStorage.setItem("followme_vType", vType.value);
-          updateUILayout();
-        });
-      }
-      if (tzInput) {
-        tzInput.addEventListener("change", () => {
-          localStorage.setItem("followme_tz", tzInput.value);
-        });
       }
 
-      function updateUILayout() {
-        if (!vType) return;
-        const type = vType.value;
-        const speedContainer = document.getElementById("speed-container");
-        if (speedContainer) {
-          speedContainer.classList.toggle("hidden", type === "ROCKET");
+      function disconnectBLE() {
+        if (bleDevice && bleDevice.gatt.connected) {
+          bleDevice.gatt.disconnect();
         }
-        speechEnabled = type === "ROCKET";
-      }
-
-      // --- PAGE SWITCHER ACTION ENGINE ---
-      function switchPage(pageId) {
-        const pageTelemetry = document.getElementById("page-telemetry");
-        const pageTracker = document.getElementById("page-tracker");
-        const tabTelemetry = document.getElementById("tab-telemetry");
-        const tabTracker = document.getElementById("tab-tracker");
-
-        if (pageTelemetry)
-          pageTelemetry.classList.toggle("hidden", pageId !== "telemetry");
-        if (pageTracker)
-          pageTracker.classList.toggle("hidden", pageId !== "tracker");
-        if (tabTelemetry)
-          tabTelemetry.classList.toggle("active", pageId === "telemetry");
-        if (tabTracker)
-          tabTracker.classList.toggle("active", pageId === "tracker");
-      }
-
-      // --- WEB BLUETOOTH CONNECTION LOGIC ---
-      if (connectBtn) {
-        connectBtn.addEventListener("click", async () => {
-          try {
-            console.log("Scanning for FollowMe Hardware arrays...");
-
-            let options = {
-              filters: [{ services: [SERVICE_UUID] }],
-              optionalServices: [SERVICE_UUID],
-            };
-
-            try {
-              bleDevice = await navigator.bluetooth.requestDevice(options);
-            } catch (filterErr) {
-              console.warn(
-                "Service filter picker empty/failed. Falling back to acceptAllDevices...",
-              );
-              bleDevice = await navigator.bluetooth.requestDevice({
-                acceptAllDevices: true,
-                optionalServices: [SERVICE_UUID],
-              });
-            }
-
-            bleDevice.addEventListener(
-              "gattserverdisconnected",
-              onDisconnected,
-            );
-
-            console.log("Connecting to GATT Profile Server...");
-            const server = await bleDevice.gatt.connect();
-
-            console.log("Binding Primary Transceiver Service...");
-            const service = await server.getPrimaryService(SERVICE_UUID);
-
-            console.log(
-              "Configuring RX Stream Characteristic notifications...",
-            );
-            rxChar = await service.getCharacteristic(RX_CHARACTERISTIC_UUID);
-            await rxChar.startNotifications();
-            rxChar.addEventListener(
-              "characteristicvaluechanged",
-              handleDataNotification,
-            );
-
-            console.log("Configuring TX Characteristic registers...");
-            txChar = await service.getCharacteristic(TX_CHARACTERISTIC_UUID);
-
-            if (connStatus) {
-              connStatus.textContent = "● Online";
-              connStatus.style.color = "var(--success)";
-            }
-            if (connectBtn) connectBtn.classList.add("hidden");
-            if (disconnectBtn) disconnectBtn.classList.remove("hidden");
-            if (syncHardwareBtn) syncHardwareBtn.removeAttribute("disabled");
-            if (alertBox) alertBox.style.display = "none";
-
-            console.log("FollowMe Ground Link Fully Active!");
-          } catch (error) {
-            console.error(
-              "Bluetooth hardware discovery sequence broken: ",
-              error,
-            );
-          }
-        });
-      }
-
-      if (disconnectBtn) {
-        disconnectBtn.addEventListener("click", () => {
-          if (bleDevice && bleDevice.gatt.connected) {
-            bleDevice.gatt.disconnect();
-          }
-        });
       }
 
       function onDisconnected() {
-        console.log("BLE Stream Interrupted Safely.");
-        if (connStatus) {
-          connStatus.textContent = "● Offline";
-          connStatus.style.color = "var(--danger)";
-        }
-        if (connectBtn) connectBtn.classList.remove("hidden");
-        if (disconnectBtn) disconnectBtn.classList.add("hidden");
-        if (syncHardwareBtn) syncHardwareBtn.setAttribute("disabled", "true");
-        if (alertBox) alertBox.style.display = "block";
+        document.getElementById("bleStatus").innerText = "● Disconnected";
+        document.getElementById("bleStatus").style.color = "var(--danger)";
+        document.getElementById("btnConnect").disabled = false;
+        document.getElementById("btnDisconnect").disabled = true;
+        logRaw("BLE Link Disconnected.");
       }
 
-      // --- CORE PAYLOAD PACKET PARSER ---
-      function handleDataNotification(event) {
-        try {
-          const decoder = new TextDecoder("utf-8");
-          const rawString = decoder.decode(event.target.value);
-          console.log("Incoming Stream Packet Array: ", rawString);
+      // --- STREAM BUFFER PARSER ---
+      function handleNotifications(event) {
+        const decoder = new TextDecoder("utf-8");
+        const chunk = decoder.decode(event.target.value);
+        rxBuffer += chunk;
 
-          const dataPoints = rawString.split("|");
-          const parsedData = {};
+        // Process incoming lines ending with \n
+        let lines = rxBuffer.split("\n");
+        rxBuffer = lines.pop(); // Retain incomplete remaining fragment
 
-          dataPoints.forEach((point) => {
-            const parts = point.split(":");
-            if (parts.length === 2) {
-              parsedData[parts[0].trim()] = parts[1].trim();
-            }
-          });
+        for (let line of lines) {
+          line = line.trim();
+          if (line.length > 0) {
+            logRaw("Rx: " + line);
+            parseTelemetryPacket(line);
+          }
+        }
+      }
 
-          if (parsedData["Alt"] && gpsAltEl)
-            gpsAltEl.textContent = parsedData["Alt"];
-          if (parsedData["Baro_Alt"] && baroAltEl)
-            baroAltEl.textContent = parsedData["Baro_Alt"];
-          if (parsedData["Flight_State"] && rocketStateEl) {
-            rocketStateEl.textContent = getFlightStateLabel(
-              parsedData["Flight_State"],
+      // --- PARSE KEY:VALUE PIPE-DELIMITED TELEMETRY STRING ---
+      // Expects: "Alt:100.5|Baro_Alt:98.2|Flight_State:2|Speed:12.4|Lat:42.123456|Lon:-83.654321"
+      function parseTelemetryPacket(packetStr) {
+        const keyValues = packetStr.split("|");
+        let packetData = {};
+
+        keyValues.forEach((pair) => {
+          const [key, val] = pair.split(":");
+          if (key && val) {
+            packetData[key.trim()] = parseFloat(val.trim());
+          }
+        });
+
+        // Update Dashboard Elements
+        if (packetData["Alt"] !== undefined)
+          document.getElementById("valGpsAlt").innerText =
+            packetData["Alt"].toFixed(1) + " m";
+        if (packetData["Baro_Alt"] !== undefined)
+          document.getElementById("valBaroAlt").innerText =
+            packetData["Baro_Alt"].toFixed(1) + " m";
+        if (packetData["Flight_State"] !== undefined)
+          document.getElementById("valFlightState").innerText =
+            packetData["Flight_State"];
+        if (packetData["Speed"] !== undefined)
+          document.getElementById("valSpeed").innerText =
+            packetData["Speed"].toFixed(1) + " m/s";
+        if (packetData["Lat"] !== undefined)
+          document.getElementById("valLat").innerText =
+            packetData["Lat"].toFixed(6);
+        if (packetData["Lon"] !== undefined)
+          document.getElementById("valLon").innerText =
+            packetData["Lon"].toFixed(6);
+
+        // Update Tracker Coordinates if Latitude & Longitude are present
+        if (packetData["Lat"] && packetData["Lon"]) {
+          targetCoords = { lat: packetData["Lat"], lon: packetData["Lon"] };
+
+          document.getElementById("tgtLat").innerText =
+            targetCoords.lat.toFixed(6);
+          document.getElementById("tgtLon").innerText =
+            targetCoords.lon.toFixed(6);
+          document.getElementById("trackerStatus").innerText =
+            "● Tracking Target";
+          document.getElementById("trackerStatus").style.color =
+            "var(--success)";
+
+          updateNavigationCalculation();
+        }
+      }
+
+      function logRaw(msg) {
+        const logBox = document.getElementById("rawLog");
+        logBox.innerHTML += `<div>${msg}</div>`;
+        logBox.scrollTop = logBox.scrollHeight;
+      }
+
+      // --- PHONE GPS SENSOR ---
+      function initPhoneTracking() {
+        if ("geolocation" in navigator) {
+          navigator.geolocation.watchPosition(
+            (position) => {
+              phoneCoords = {
+                lat: position.coords.latitude,
+                lon: position.coords.longitude,
+              };
+              document.getElementById("phoneGpsStatus").innerText =
+                "Phone GPS Active. Point towards rocket.";
+              updateNavigationCalculation();
+            },
+            (err) => {
+              document.getElementById("phoneGpsStatus").innerText =
+                "Phone GPS Error: " + err.message;
+            },
+            { enableHighAccuracy: true },
+          );
+        }
+      }
+
+      // --- COMPASS & DIRECTION CALCULATIONS ---
+      function requestCompassPermission() {
+        if (
+          typeof DeviceOrientationEvent !== "undefined" &&
+          typeof DeviceOrientationEvent.requestPermission === "function"
+        ) {
+          DeviceOrientationEvent.requestPermission()
+            .then((response) => {
+              if (response === "granted") {
+                window.addEventListener(
+                  "deviceorientation",
+                  handleCompassMove,
+                  true,
+                );
+              }
+            })
+            .catch(console.error);
+        } else {
+          if ("ondeviceorientationabsolute" in window) {
+            window.addEventListener(
+              "deviceorientationabsolute",
+              handleCompassMove,
+              true,
+            );
+          } else {
+            window.addEventListener(
+              "deviceorientation",
+              handleCompassMove,
+              true,
             );
           }
-          if (parsedData["Speed"] && liveSpeedEl) {
-            liveSpeedEl.textContent =
-              parseFloat(parsedData["Speed"]).toFixed(1) + " ft/s";
-          }
-          if (parsedData["Distance"] && targetDistEl) {
-            targetDistEl.textContent = parsedData["Distance"] + " ft";
-          }
-          if (parsedData["Course"] && targetBearingEl) {
-            targetBearingEl.textContent = parsedData["Course"] + "°";
-            const bearingFloat = parseFloat(parsedData["Course"]);
-            if (!isNaN(bearingFloat) && directionArrowEl) {
-              directionArrowEl.style.transform = `rotate(${bearingFloat}deg)`;
-            }
-          }
-
-          flightData.push({
-            timestamp: new Date().toISOString(),
-            gps_altitude: parsedData["Alt"] || "0.0",
-            baro_altitude: parsedData["Baro_Alt"] || "0.0",
-            flight_state: parsedData["Flight_State"] || "0",
-            latitude: parsedData["Lat"] || "0.000000",
-            longitude: parsedData["Lon"] || "0.000000",
-            distance: parsedData["Distance"] || "0.0",
-            course: parsedData["Course"] || "0.0",
-            speed: parsedData["Speed"] || "0.0",
-          });
-        } catch (err) {
-          console.error("Payload data notification parsing failure: ", err);
         }
       }
 
-      function getFlightStateLabel(stateNumber) {
-        const states = {
-          0: "STANDBY",
-          1: "ARMED",
-          2: "POWERED_ASCENT",
-          3: "COASTING",
-          4: "DESCENT",
-          5: "LANDED",
-        };
-        return states[stateNumber] || `STATE_${stateNumber}`;
-      }
-
-      // --- FILE EXPORT ARCHITECTURE UNITS ---
-      function downloadCSV() {
-        if (flightData.length === 0) {
-          alert("No tracking array logs captured to build spreadsheets yet.");
-          return;
-        }
-        let csvContent =
-          "Timestamp,GPS Altitude,Baro Altitude,Flight State,Latitude,Longitude,Distance,Course,Speed_ft_s\n";
-        flightData.forEach((row) => {
-          csvContent += `${row.timestamp},${row.gps_altitude},${row.baro_altitude},${row.flight_state},${row.latitude},${row.longitude},${row.distance},${row.course},${row.speed}\n`;
-        });
-        const blob = new Blob([csvContent], {
-          type: "text/csv;charset=utf-8;",
-        });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `FollowMe_Telemetry_${Date.now()}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-
-      function downloadKML() {
-        if (flightData.length === 0) {
-          alert("No flight path coordinates recorded yet to map.");
-          return;
+      function handleCompassMove(event) {
+        let heading = event.alpha;
+        if (event.webkitCompassHeading) {
+          heading = event.webkitCompassHeading; // iOS
+        } else if (event.absolute === false && event.alpha !== null) {
+          heading = 360 - event.alpha; // Android
         }
 
-        const validPoints = flightData.filter(
-          (row) =>
-            parseFloat(row.latitude) !== 0 && parseFloat(row.longitude) !== 0,
-        );
-
-        if (validPoints.length === 0) {
-          alert("No valid GPS tracks recorded yet.");
-          return;
+        if (heading !== null && heading !== undefined) {
+          phoneHeading = heading;
+          updateNavigationCalculation();
         }
-
-        let launchLat = parseFloat(validPoints[0].latitude);
-        let launchLon = parseFloat(validPoints[0].longitude);
-
-        let kmlContent = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n<name>FollowMe Flight Path</name>\n</Document>\n</kml>`;
-        const blob = new Blob([kmlContent], {
-          type: "application/vnd.google-earth.kml+xml",
-        });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `FollowMe_Flight_${Date.now()}.kml`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
       }
+
+      function updateNavigationCalculation() {
+        if (!phoneCoords || !targetCoords) return;
+
+        const lat1 = (phoneCoords.lat * Math.PI) / 180;
+        const lon1 = (phoneCoords.lon * Math.PI) / 180;
+        const lat2 = (targetCoords.lat * Math.PI) / 180;
+        const lon2 = (targetCoords.lon * Math.PI) / 180;
+
+        // Bearing Calculation
+        const dLon = lon2 - lon1;
+        const y = Math.sin(dLon) * Math.cos(lat2);
+        const x =
+          Math.cos(lat1) * Math.sin(lat2) -
+          Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+        let bearing = (Math.atan2(y, x) * 180) / Math.PI;
+        bearing = (bearing + 360) % 360;
+
+        // Haversine Distance Calculation
+        const R = 6371000; // meters
+        const dLat = lat2 - lat1;
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+        const distanceMeters =
+          R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+
+        // Output Display Values
+        document.getElementById("targetDist").innerText =
+          distanceMeters > 1000
+            ? (distanceMeters / 1000).toFixed(2) + " km"
+            : distanceMeters.toFixed(1) + " m";
+        document.getElementById("targetBearing").innerText =
+          Math.round(bearing) + "°";
+
+        // Rotate Compass Arrow
+        const arrowRotation = (bearing - phoneHeading + 360) % 360;
+        document.getElementById("directionArrow").style.transform =
+          `rotate(${arrowRotation}deg)`;
+      }
+
+      // Initialize on load
+      window.addEventListener("DOMContentLoaded", () => {
+        initPhoneTracking();
+      });
     </script>
   </body>
 </html>
