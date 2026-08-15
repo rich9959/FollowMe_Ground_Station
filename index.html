@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FollowMe Ground Station</title>
-
+    
     <style>
       :root {
         --primary: #007bff;
@@ -12,6 +12,7 @@
         --danger: #dc3545;
         --dark: #212529;
         --light: #f8f9fa;
+        --warning: #ffc107;
       }
 
       body {
@@ -92,6 +93,16 @@
         color: white;
       }
 
+      .btn-export {
+        background: #17a2b8;
+        color: white;
+      }
+
+      .btn-clear {
+        background: #6c757d;
+        color: white;
+      }
+
       .label {
         font-size: 0.8rem;
         color: #666;
@@ -159,13 +170,10 @@
     </style>
   </head>
   <body>
+
     <!-- TOP TAB SWITCHER -->
     <div class="nav-tabs">
-      <button
-        id="btn-cmd"
-        class="nav-btn active"
-        onclick="switchTab('dashboard')"
-      >
+      <button id="btn-cmd" class="nav-btn active" onclick="switchTab('dashboard')">
         Command Center
       </button>
       <button id="btn-trk" class="nav-btn" onclick="switchTab('tracker')">
@@ -177,78 +185,69 @@
     <!-- VIEW 1: COMMAND CENTER (BLE Controls & Telemetry)    -->
     <!-- ==================================================== -->
     <div id="page-dashboard" class="page-view active">
+      
       <!-- BLE Connection Control Card -->
       <div class="card">
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-          "
-        >
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
           <strong style="font-size: 1.2rem">BLE Connection</strong>
-          <span id="bleStatus" class="status-dot" style="color: var(--danger)"
-            >● Disconnected</span
-          >
+          <span id="bleStatus" class="status-dot" style="color: var(--danger)">● Disconnected</span>
         </div>
-
+        
         <div class="grid-2">
-          <button
-            id="btnConnect"
-            class="btn btn-connect"
-            onclick="connectBLE()"
-          >
-            Connect BLE
-          </button>
-          <button
-            id="btnDisconnect"
-            class="btn btn-disconnect"
-            onclick="disconnectBLE()"
-            disabled
-          >
-            Disconnect
-          </button>
+          <button id="btnConnect" class="btn btn-connect" onclick="connectBLE()">Connect BLE</button>
+          <button id="btnDisconnect" class="btn btn-disconnect" onclick="disconnectBLE()" disabled>Disconnect</button>
         </div>
       </div>
 
-      <!-- Telemetry Data Display Grid -->
+      <!-- Live Telemetry Readout Grid -->
       <div class="card">
-        <strong style="font-size: 1.1rem; display: block; margin-bottom: 10px"
-          >Live Telemetry</strong
-        >
-
+        <strong style="font-size: 1.1rem; display: block; margin-bottom: 10px;">Live Telemetry</strong>
+        
         <div class="grid-2">
-          <div class="card" style="background: var(--light); margin: 0">
+          <div class="card" style="background: var(--light); margin: 0;">
             <span class="label">GPS Altitude</span>
             <span id="valGpsAlt" class="val-display">--- m</span>
           </div>
 
-          <div class="card" style="background: var(--light); margin: 0">
+          <div class="card" style="background: var(--light); margin: 0;">
             <span class="label">Baro Altitude</span>
             <span id="valBaroAlt" class="val-display">--- m</span>
           </div>
 
-          <div class="card" style="background: var(--light); margin: 0">
+          <div class="card" style="background: var(--light); margin: 0;">
             <span class="label">Flight State</span>
             <span id="valFlightState" class="val-display">---</span>
           </div>
 
-          <div class="card" style="background: var(--light); margin: 0">
-            <span class="label">GPS Speed</span>
-            <span id="valSpeed" class="val-display">--- m/s</span>
+          <div class="card" style="background: var(--light); margin: 0;">
+            <span class="label">Speed</span>
+            <span id="valSpeed" class="val-display">--- mph</span>
           </div>
 
-          <div class="card" style="background: var(--light); margin: 0">
+          <div class="card" style="background: var(--light); margin: 0;">
             <span class="label">Latitude</span>
             <span id="valLat" class="val-display">---</span>
           </div>
 
-          <div class="card" style="background: var(--light); margin: 0">
+          <div class="card" style="background: var(--light); margin: 0;">
             <span class="label">Longitude</span>
             <span id="valLon" class="val-display">---</span>
           </div>
         </div>
+      </div>
+
+      <!-- Data Export & File Download Controls -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <strong style="font-size: 1.1rem;">Flight Data Recorder</strong>
+          <span id="logCounter" style="font-size: 0.85rem; color: #666;">0 data points logged</span>
+        </div>
+        
+        <div class="grid-2">
+          <button class="btn btn-export" onclick="downloadCSV()">Save CSV File</button>
+          <button class="btn btn-export" onclick="downloadKML()">Save KML File</button>
+        </div>
+        <button class="btn btn-clear" onclick="clearLoggedData()">Clear Flight Recording</button>
       </div>
 
       <!-- Raw Stream Console Output -->
@@ -263,20 +262,9 @@
     <!-- ==================================================== -->
     <div id="page-tracker" class="page-view">
       <div class="card">
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          "
-        >
+        <div style="display: flex; justify-content: space-between; align-items: center;">
           <strong style="font-size: 1.2rem">Direction Pointer</strong>
-          <span
-            id="trackerStatus"
-            class="status-dot"
-            style="color: var(--danger)"
-            >● Awaiting GPS Data</span
-          >
+          <span id="trackerStatus" class="status-dot" style="color: var(--danger)">● Awaiting GPS Data</span>
         </div>
 
         <div class="tracker-container">
@@ -284,32 +272,18 @@
             <div id="directionArrow" class="compass-arrow"></div>
           </div>
 
-          <div class="tracker-stats" style="width: 100%">
+          <div class="tracker-stats" style="width: 100%;">
             <div class="grid-2">
-              <div
-                class="card"
-                style="background: var(--light); margin: 0; text-align: center"
-              >
+              <div class="card" style="background: var(--light); margin: 0; text-align: center;">
                 <span class="label">Distance</span>
                 <span id="targetDist" class="val-display">---</span>
               </div>
-              <div
-                class="card"
-                style="background: var(--light); margin: 0; text-align: center"
-              >
+              <div class="card" style="background: var(--light); margin: 0; text-align: center;">
                 <span class="label">Bearing</span>
                 <span id="targetBearing" class="val-display">---</span>
               </div>
             </div>
-            <small
-              id="phoneGpsStatus"
-              style="
-                color: #888;
-                display: block;
-                margin-top: 15px;
-                text-align: center;
-              "
-            >
+            <small id="phoneGpsStatus" style="color: #888; display: block; margin-top: 15px; text-align: center;">
               Initializing Phone Sensors...
             </small>
           </div>
@@ -318,7 +292,7 @@
 
       <div class="card">
         <span class="label">Target Coordinates</span>
-        <div class="grid-2" style="margin-top: 5px">
+        <div class="grid-2" style="margin-top: 5px;">
           <div>Latitude: <strong id="tgtLat">---</strong></div>
           <div>Longitude: <strong id="tgtLon">---</strong></div>
         </div>
@@ -326,10 +300,10 @@
     </div>
 
     <!-- ==================================================== -->
-    <!-- JAVASCRIPT: BLE PIPELINE & DIRECTIONAL LOGIC        -->
+    <!-- JAVASCRIPT: BLE PIPELINE, LOGGING & KML GENERATION  -->
     <!-- ==================================================== -->
     <script>
-      // UUID Matching configuration (Standard lower-case UUIDs)
+      // UUID Matching configuration
       const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
       const RX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
 
@@ -343,19 +317,22 @@
       let phoneHeading = 0;
       let targetCoords = null;
 
+      // Flight Data Recording Storage Array
+      let flightLog = [];
+
       // Tab Switcher Controller
       function switchTab(tabName) {
-        document.getElementById("page-dashboard").classList.remove("active");
-        document.getElementById("page-tracker").classList.remove("active");
-        document.getElementById("btn-cmd").classList.remove("active");
-        document.getElementById("btn-trk").classList.remove("active");
+        document.getElementById('page-dashboard').classList.remove('active');
+        document.getElementById('page-tracker').classList.remove('active');
+        document.getElementById('btn-cmd').classList.remove('active');
+        document.getElementById('btn-trk').classList.remove('active');
 
-        if (tabName === "dashboard") {
-          document.getElementById("page-dashboard").classList.add("active");
-          document.getElementById("btn-cmd").classList.add("active");
-        } else if (tabName === "tracker") {
-          document.getElementById("page-tracker").classList.add("active");
-          document.getElementById("btn-trk").classList.add("active");
+        if (tabName === 'dashboard') {
+          document.getElementById('page-dashboard').classList.add('active');
+          document.getElementById('btn-cmd').classList.add('active');
+        } else if (tabName === 'tracker') {
+          document.getElementById('page-tracker').classList.add('active');
+          document.getElementById('btn-trk').classList.add('active');
           requestCompassPermission();
         }
       }
@@ -366,10 +343,10 @@
           logRaw("Requesting BLE Device...");
           bleDevice = await navigator.bluetooth.requestDevice({
             filters: [{ namePrefix: "FollowMe-" }],
-            optionalServices: [SERVICE_UUID],
+            optionalServices: [SERVICE_UUID]
           });
 
-          bleDevice.addEventListener("gattserverdisconnected", onDisconnected);
+          bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
 
           logRaw("Connecting to GATT Server...");
           const server = await bleDevice.gatt.connect();
@@ -378,18 +355,12 @@
           const service = await server.getPrimaryService(SERVICE_UUID);
 
           logRaw("Getting RX Characteristic...");
-          rxCharacteristic = await service.getCharacteristic(
-            RX_CHARACTERISTIC_UUID,
-          );
+          rxCharacteristic = await service.getCharacteristic(RX_CHARACTERISTIC_UUID);
 
           logRaw("Starting Notifications...");
           await rxCharacteristic.startNotifications();
-          rxCharacteristic.addEventListener(
-            "characteristicvaluechanged",
-            handleNotifications,
-          );
+          rxCharacteristic.addEventListener('characteristicvaluechanged', handleNotifications);
 
-          // Update Status UI
           document.getElementById("bleStatus").innerText = "● Connected";
           document.getElementById("bleStatus").style.color = "var(--success)";
           document.getElementById("btnConnect").disabled = true;
@@ -422,9 +393,8 @@
         const chunk = decoder.decode(event.target.value);
         rxBuffer += chunk;
 
-        // Process incoming lines ending with \n
         let lines = rxBuffer.split("\n");
-        rxBuffer = lines.pop(); // Retain incomplete remaining fragment
+        rxBuffer = lines.pop(); // Retain incomplete fragment
 
         for (let line of lines) {
           line = line.trim();
@@ -436,50 +406,55 @@
       }
 
       // --- PARSE KEY:VALUE PIPE-DELIMITED TELEMETRY STRING ---
-      // Expects: "Alt:100.5|Baro_Alt:98.2|Flight_State:2|Speed:12.4|Lat:42.123456|Lon:-83.654321"
       function parseTelemetryPacket(packetStr) {
         const keyValues = packetStr.split("|");
-        let packetData = {};
+        let pData = {};
 
         keyValues.forEach((pair) => {
           const [key, val] = pair.split(":");
           if (key && val) {
-            packetData[key.trim()] = parseFloat(val.trim());
+            pData[key.trim()] = parseFloat(val.trim());
           }
         });
 
-        // Update Dashboard Elements
-        if (packetData["Alt"] !== undefined)
-          document.getElementById("valGpsAlt").innerText =
-            packetData["Alt"].toFixed(1) + " m";
-        if (packetData["Baro_Alt"] !== undefined)
-          document.getElementById("valBaroAlt").innerText =
-            packetData["Baro_Alt"].toFixed(1) + " m";
-        if (packetData["Flight_State"] !== undefined)
-          document.getElementById("valFlightState").innerText =
-            packetData["Flight_State"];
-        if (packetData["Speed"] !== undefined)
-          document.getElementById("valSpeed").innerText =
-            packetData["Speed"].toFixed(1) + " m/s";
-        if (packetData["Lat"] !== undefined)
-          document.getElementById("valLat").innerText =
-            packetData["Lat"].toFixed(6);
-        if (packetData["Lon"] !== undefined)
-          document.getElementById("valLon").innerText =
-            packetData["Lon"].toFixed(6);
+        // Record timestamped telemetry point into array
+        const record = {
+          timestamp: new Date(),
+          lat: pData["Lat"] || 0,
+          lon: pData["Lon"] || 0,
+          gpsAlt: pData["Alt"] || 0,
+          baroAlt: pData["Baro_Alt"] || 0,
+          flightState: pData["Flight_State"] || 0,
+          speed: pData["Speed"] || 0,
+          course: pData["Course"] || 0,
+          hdop: pData["HDOP"] || 0,
+          vdop: pData["VDOP"] || 0,
+          sats: pData["Sats"] || 0,
+          batt: pData["Batt"] || 0
+        };
 
-        // Update Tracker Coordinates if Latitude & Longitude are present
-        if (packetData["Lat"] && packetData["Lon"]) {
-          targetCoords = { lat: packetData["Lat"], lon: packetData["Lon"] };
+        // Append to flight recorder array if valid location received
+        if (record.lat !== 0 && record.lon !== 0) {
+          flightLog.push(record);
+          document.getElementById("logCounter").innerText = `${flightLog.length} data points logged`;
+        }
 
-          document.getElementById("tgtLat").innerText =
-            targetCoords.lat.toFixed(6);
-          document.getElementById("tgtLon").innerText =
-            targetCoords.lon.toFixed(6);
-          document.getElementById("trackerStatus").innerText =
-            "● Tracking Target";
-          document.getElementById("trackerStatus").style.color =
-            "var(--success)";
+        // Update Dashboard Display Elements
+        if (pData["Alt"] !== undefined) document.getElementById("valGpsAlt").innerText = pData["Alt"].toFixed(1) + " m";
+        if (pData["Baro_Alt"] !== undefined) document.getElementById("valBaroAlt").innerText = pData["Baro_Alt"].toFixed(1) + " m";
+        if (pData["Flight_State"] !== undefined) document.getElementById("valFlightState").innerText = pData["Flight_State"];
+        if (pData["Speed"] !== undefined) document.getElementById("valSpeed").innerText = pData["Speed"].toFixed(1) + " mph";
+        if (pData["Lat"] !== undefined) document.getElementById("valLat").innerText = pData["Lat"].toFixed(6);
+        if (pData["Lon"] !== undefined) document.getElementById("valLon").innerText = pData["Lon"].toFixed(6);
+
+        // Update Tracker Navigation Coordinates
+        if (pData["Lat"] && pData["Lon"]) {
+          targetCoords = { lat: pData["Lat"], lon: pData["Lon"] };
+          
+          document.getElementById("tgtLat").innerText = targetCoords.lat.toFixed(6);
+          document.getElementById("tgtLon").innerText = targetCoords.lon.toFixed(6);
+          document.getElementById("trackerStatus").innerText = "● Tracking Target";
+          document.getElementById("trackerStatus").style.color = "var(--success)";
 
           updateNavigationCalculation();
         }
@@ -491,6 +466,128 @@
         logBox.scrollTop = logBox.scrollHeight;
       }
 
+      // --- CSV FILE EXPORT ENGINE ---
+      function downloadCSV() {
+        if (flightLog.length === 0) {
+          alert("No recorded telemetry data available to export.");
+          return;
+        }
+
+        let csvContent = "Timestamp, Latitude, Longitude, GPS_Alt(m), BaroAlt(m), Flight State , Speed(mph), course, HDOP, VDOP, Sats, Batt(V)\n";
+
+        flightLog.forEach((pt) => {
+          const timeStr = pt.timestamp.toISOString();
+          csvContent += `${timeStr}, ${pt.lat.toFixed(6)}, ${pt.lon.toFixed(6)}, ${pt.gpsAlt.toFixed(1)}, ${pt.baroAlt.toFixed(1)}, ${pt.flightState}, ${pt.speed.toFixed(1)}, ${pt.course.toFixed(1)}, ${pt.hdop}, ${pt.vdop}, ${pt.sats}, ${pt.batt.toFixed(2)}\n`;
+        });
+
+        triggerFileDownload(csvContent, `FlightData_${getFilenameTimestamp()}.csv`, "text/csv");
+      }
+
+      // --- KML FILE EXPORT ENGINE ---
+      function downloadKML() {
+        if (flightLog.length === 0) {
+          alert("No recorded telemetry data available to generate KML.");
+          return;
+        }
+
+        // Calculate Flight Metrics
+        const launchPoint = flightLog[0];
+        const landingPoint = flightLog[flightLog.length - 1];
+
+        let maxAltPoint = flightLog[0];
+        let maxSpeed = 0;
+
+        flightLog.forEach((pt) => {
+          if (pt.gpsAlt > maxAltPoint.gpsAlt) maxAltPoint = pt;
+          if (pt.speed > maxSpeed) maxSpeed = pt.speed;
+        });
+
+        const durationSec = Math.round((landingPoint.timestamp - launchPoint.timestamp) / 1000);
+        const flightDurationStr = `${Math.floor(durationSec / 60)}m ${durationSec % 60}s`;
+
+        // Coordinate LineString Array (lon,lat,alt)
+        let coordsPathString = "";
+        flightLog.forEach((pt) => {
+          coordsPathString += `${pt.lon.toFixed(6)},${pt.lat.toFixed(6)},${pt.gpsAlt.toFixed(1)}\n`;
+        });
+
+        // Construct exact formatted KML Document
+        const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+<Style id="Rocket Path">
+<LineStyle>
+<Style id="ascentStyle"><LineStyle><color>FF0000FF</color><width>4</width></LineStyle></Style>
+<Style id="descentStyle"><LineStyle><color>FF00FF00</color><width>4</width></LineStyle></Style>
+<width>4</width>
+</LineStyle>
+<LineString>
+<altitudeMode>absolute</altitudeMode>
+<coordinates>
+${coordsPathString.trim()}
+</coordinates>
+</LineString>
+</Placemark>
+<Snippet maxLines="7">
+Rautronics Hobbies
+FollowMe Tracker
+Firmware: 1.0
+Flight Duration = ${flightDurationStr}
+Max GPS Altitude = ${maxAltPoint.gpsAlt.toFixed(1)} m
+Max Speed = ${maxSpeed.toFixed(1)} mph
+Landing Location = ${landingPoint.lat.toFixed(6)}, ${landingPoint.lon.toFixed(6)}
+</Snippet>
+<Placemark>
+<name>LaunchPad</name>
+<Point>
+<altitudeMode>clampToGround</altitudeMode>
+<coordinates>${launchPoint.lon.toFixed(6)},${launchPoint.lat.toFixed(6)},${launchPoint.gpsAlt.toFixed(1)}</coordinates>
+</Point>
+</Placemark>
+<Placemark>
+<name>APOGEE</name>
+<Point>
+<altitudeMode>absolute</altitudeMode>
+<coordinates>${maxAltPoint.lon.toFixed(6)},${maxAltPoint.lat.toFixed(6)},${maxAltPoint.gpsAlt.toFixed(1)}</coordinates>
+</Point>
+</Placemark>
+<Placemark>
+<name>LANDING</name>
+<Point>
+<altitudeMode>clampToGround</altitudeMode>
+<coordinates>${landingPoint.lon.toFixed(6)},${landingPoint.lat.toFixed(6)},${landingPoint.gpsAlt.toFixed(1)}</coordinates>
+</Point>
+</Placemark>
+</Document>
+</kml>`;
+
+        triggerFileDownload(kmlContent, `RocketPath_${getFilenameTimestamp()}.kml`, "application/vnd.google-earth.kml+xml");
+      }
+
+      function triggerFileDownload(content, fileName, contentType) {
+        const blob = new Blob([content], { type: contentType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      function clearLoggedData() {
+        if (confirm("Are you sure you want to clear current flight recording logs?")) {
+          flightLog = [];
+          document.getElementById("logCounter").innerText = "0 data points logged";
+        }
+      }
+
+      function getFilenameTimestamp() {
+        const d = new Date();
+        return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
+      }
+
       // --- PHONE GPS SENSOR ---
       function initPhoneTracking() {
         if ("geolocation" in navigator) {
@@ -498,51 +595,34 @@
             (position) => {
               phoneCoords = {
                 lat: position.coords.latitude,
-                lon: position.coords.longitude,
+                lon: position.coords.longitude
               };
-              document.getElementById("phoneGpsStatus").innerText =
-                "Phone GPS Active. Point towards rocket.";
+              document.getElementById("phoneGpsStatus").innerText = "Phone GPS Active. Point towards rocket.";
               updateNavigationCalculation();
             },
             (err) => {
-              document.getElementById("phoneGpsStatus").innerText =
-                "Phone GPS Error: " + err.message;
+              document.getElementById("phoneGpsStatus").innerText = "Phone GPS Error: " + err.message;
             },
-            { enableHighAccuracy: true },
+            { enableHighAccuracy: true }
           );
         }
       }
 
       // --- COMPASS & DIRECTION CALCULATIONS ---
       function requestCompassPermission() {
-        if (
-          typeof DeviceOrientationEvent !== "undefined" &&
-          typeof DeviceOrientationEvent.requestPermission === "function"
-        ) {
+        if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
           DeviceOrientationEvent.requestPermission()
             .then((response) => {
               if (response === "granted") {
-                window.addEventListener(
-                  "deviceorientation",
-                  handleCompassMove,
-                  true,
-                );
+                window.addEventListener("deviceorientation", handleCompassMove, true);
               }
             })
             .catch(console.error);
         } else {
           if ("ondeviceorientationabsolute" in window) {
-            window.addEventListener(
-              "deviceorientationabsolute",
-              handleCompassMove,
-              true,
-            );
+            window.addEventListener("deviceorientationabsolute", handleCompassMove, true);
           } else {
-            window.addEventListener(
-              "deviceorientation",
-              handleCompassMove,
-              true,
-            );
+            window.addEventListener("deviceorientation", handleCompassMove, true);
           }
         }
       }
@@ -550,9 +630,9 @@
       function handleCompassMove(event) {
         let heading = event.alpha;
         if (event.webkitCompassHeading) {
-          heading = event.webkitCompassHeading; // iOS
+          heading = event.webkitCompassHeading;
         } else if (event.absolute === false && event.alpha !== null) {
-          heading = 360 - event.alpha; // Android
+          heading = 360 - event.alpha;
         }
 
         if (heading !== null && heading !== undefined) {
@@ -569,39 +649,25 @@
         const lat2 = (targetCoords.lat * Math.PI) / 180;
         const lon2 = (targetCoords.lon * Math.PI) / 180;
 
-        // Bearing Calculation
         const dLon = lon2 - lon1;
         const y = Math.sin(dLon) * Math.cos(lat2);
-        const x =
-          Math.cos(lat1) * Math.sin(lat2) -
-          Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
         let bearing = (Math.atan2(y, x) * 180) / Math.PI;
         bearing = (bearing + 360) % 360;
 
-        // Haversine Distance Calculation
-        const R = 6371000; // meters
+        const R = 6371000;
         const dLat = lat2 - lat1;
-        const a =
-          Math.sin(dLat / 2) ** 2 +
-          Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-        const distanceMeters =
-          R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+        const distanceMeters = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 
-        // Output Display Values
         document.getElementById("targetDist").innerText =
-          distanceMeters > 1000
-            ? (distanceMeters / 1000).toFixed(2) + " km"
-            : distanceMeters.toFixed(1) + " m";
-        document.getElementById("targetBearing").innerText =
-          Math.round(bearing) + "°";
+          distanceMeters > 1000 ? (distanceMeters / 1000).toFixed(2) + " km" : distanceMeters.toFixed(1) + " m";
+        document.getElementById("targetBearing").innerText = Math.round(bearing) + "°";
 
-        // Rotate Compass Arrow
         const arrowRotation = (bearing - phoneHeading + 360) % 360;
-        document.getElementById("directionArrow").style.transform =
-          `rotate(${arrowRotation}deg)`;
+        document.getElementById("directionArrow").style.transform = `rotate(${arrowRotation}deg)`;
       }
 
-      // Initialize on load
       window.addEventListener("DOMContentLoaded", () => {
         initPhoneTracking();
       });
