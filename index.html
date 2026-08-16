@@ -514,51 +514,66 @@
         // Construct exact formatted KML Document
         const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
-<Document>
-<Style id="Rocket Path">
-<LineStyle>
-<Style id="ascentStyle"><LineStyle><color>FF0000FF</color><width>4</width></LineStyle></Style>
-<Style id="descentStyle"><LineStyle><color>FF00FF00</color><width>4</width></LineStyle></Style>
-<width>4</width>
-</LineStyle>
-<LineString>
-<altitudeMode>absolute</altitudeMode>
-<coordinates>
-${coordsPathString.trim()}
-</coordinates>
-</LineString>
-</Placemark>
-<Snippet maxLines="7">
-Rautronics Hobbies
-FollowMe Tracker
-Firmware: 1.0
-Flight Duration = ${flightDurationStr}
-Max GPS Altitude = ${maxAltPoint.gpsAlt.toFixed(1)} m
-Max Speed = ${maxSpeed.toFixed(1)} mph
-Landing Location = ${landingPoint.lat.toFixed(6)}, ${landingPoint.lon.toFixed(6)}
-</Snippet>
-<Placemark>
-<name>LaunchPad</name>
-<Point>
-<altitudeMode>clampToGround</altitudeMode>
-<coordinates>${launchPoint.lon.toFixed(6)},${launchPoint.lat.toFixed(6)},${launchPoint.gpsAlt.toFixed(1)}</coordinates>
-</Point>
-</Placemark>
-<Placemark>
-<name>APOGEE</name>
-<Point>
-<altitudeMode>absolute</altitudeMode>
-<coordinates>${maxAltPoint.lon.toFixed(6)},${maxAltPoint.lat.toFixed(6)},${maxAltPoint.gpsAlt.toFixed(1)}</coordinates>
-</Point>
-</Placemark>
-<Placemark>
-<name>LANDING</name>
-<Point>
-<altitudeMode>clampToGround</altitudeMode>
+  <Document>
+    <name>Rocket Path</name>
+    <Style id="ascentStyle">
+      <LineStyle>
+        <color>FF0000FF</color>
+        <width>4</width>
+      </LineStyle>
+    </Style>
+    
+    <Style id="descentStyle">
+      <LineStyle>
+        <color>FF00FF00</color>
+        <width>4</width>
+      </LineStyle>
+    </Style>
+
+    <Placemark>
+      <styleUrl>#ascentStyle</styleUrl>
+      <LineString>
+        <altitudeMode>absolute</altitudeMode>
+        <coordinates>
+          ${coordsPathString.trim()}
+        </coordinates>
+      </LineString>
+    </Placemark>
+
+    <Snippet maxLines="7">
+      Rautronics Hobbies
+      FollowMe Tracker
+      Firmware: 1.0
+      Flight Duration = ${flightDurationStr}
+      Max GPS Altitude = ${maxAltPoint.gpsAlt.toFixed(1)} m
+      Max Speed = ${maxSpeed.toFixed(1)} mph
+      Landing Location = ${landingPoint.lat.toFixed(6)}, ${landingPoint.lon.toFixed(6)}
+    </Snippet>
+
+    <Placemark>
+      <name>LaunchPad</name>
+      <Point>
+        <altitudeMode>clampToGround</altitudeMode>
+        <coordinates>${launchPoint.lon.toFixed(6)},${launchPoint.lat.toFixed(6)},${launchPoint.gpsAlt.toFixed(1)}</coordinates>
+      </Point>
+    </Placemark>
+
+    <Placemark>
+      <name>APOGEE</name>
+      <Point>
+        <altitudeMode>absolute</altitudeMode>
+        <coordinates>${maxAltPoint.lon.toFixed(6)},${maxAltPoint.lat.toFixed(6)},${maxAltPoint.gpsAlt.toFixed(1)}</coordinates>
+      </Point>
+    </Placemark>
+
+    <Placemark>
+      <name>LANDING</name>
+      <Point>
+        <altitudeMode>clampToGround</altitudeMode>
 <coordinates>${landingPoint.lon.toFixed(6)},${landingPoint.lat.toFixed(6)},${landingPoint.gpsAlt.toFixed(1)}</coordinates>
-</Point>
-</Placemark>
-</Document>
+      </Point>
+    </Placemark>
+  </Document>
 </kml>`;
 
         triggerFileDownload(kmlContent, `RocketPath_${getFilenameTimestamp()}.kml`, "application/vnd.google-earth.kml+xml");
