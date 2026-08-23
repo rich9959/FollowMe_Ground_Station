@@ -23,7 +23,7 @@
         color: var(--dark);
       }
 
-      /* Navigation Tabs */
+      /* Navigation Tabs & Unit Switcher */
       .nav-tabs {
         display: flex;
         gap: 10px;
@@ -31,20 +31,32 @@
       }
 
       .nav-btn {
-        flex: 1;
+        flex: 2;
         padding: 12px;
         background: #495057;
         color: white;
         border: none;
         border-radius: 6px;
         font-weight: bold;
-        font-size: 1rem;
+        font-size: 0.95rem;
         cursor: pointer;
         transition: background 0.2s ease;
       }
 
       .nav-btn.active {
         background: var(--primary);
+      }
+
+      .unit-toggle-btn {
+        flex: 1;
+        padding: 12px;
+        background: #6c757d;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-weight: bold;
+        font-size: 0.9rem;
+        cursor: pointer;
       }
 
       /* Tab Views */
@@ -171,7 +183,7 @@
   </head>
   <body>
 
-    <!-- TOP TAB SWITCHER -->
+    <!-- TOP NAVIGATION & UNIT TOGGLE -->
     <div class="nav-tabs">
       <button id="btn-cmd" class="nav-btn active" onclick="switchTab('dashboard')">
         Command Center
@@ -179,14 +191,13 @@
       <button id="btn-trk" class="nav-btn" onclick="switchTab('tracker')">
         Rocket Tracker
       </button>
+      <button id="unitBtn" class="unit-toggle-btn" onclick="toggleUnits()">
+        Units: Metric
+      </button>
     </div>
 
-    <!-- ==================================================== -->
-    <!-- VIEW 1: COMMAND CENTER (BLE Controls & Telemetry)    -->
-    <!-- ==================================================== -->
+    <!-- VIEW 1: COMMAND CENTER -->
     <div id="page-dashboard" class="page-view active">
-      
-      <!-- BLE Connection Control Card -->
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
           <strong style="font-size: 1.2rem">BLE Connection</strong>
@@ -199,19 +210,18 @@
         </div>
       </div>
 
-      <!-- Live Telemetry Readout Grid -->
       <div class="card">
         <strong style="font-size: 1.1rem; display: block; margin-bottom: 10px;">Live Telemetry</strong>
         
         <div class="grid-2">
           <div class="card" style="background: var(--light); margin: 0;">
             <span class="label">GPS Altitude</span>
-            <span id="valGpsAlt" class="val-display">--- m</span>
+            <span id="valGpsAlt" class="val-display">---</span>
           </div>
 
           <div class="card" style="background: var(--light); margin: 0;">
             <span class="label">Baro Altitude</span>
-            <span id="valBaroAlt" class="val-display">--- m</span>
+            <span id="valBaroAlt" class="val-display">---</span>
           </div>
 
           <div class="card" style="background: var(--light); margin: 0;">
@@ -221,7 +231,7 @@
 
           <div class="card" style="background: var(--light); margin: 0;">
             <span class="label">Speed</span>
-            <span id="valSpeed" class="val-display">--- mph</span>
+            <span id="valSpeed" class="val-display">---</span>
           </div>
 
           <div class="card" style="background: var(--light); margin: 0;">
@@ -236,7 +246,6 @@
         </div>
       </div>
 
-      <!-- Data Export & File Download Controls -->
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
           <strong style="font-size: 1.1rem;">Flight Data Recorder</strong>
@@ -250,16 +259,13 @@
         <button class="btn btn-clear" onclick="clearLoggedData()">Clear Flight Recording</button>
       </div>
 
-      <!-- Raw Stream Console Output -->
       <div class="card">
         <span class="label">Raw BLE Stream</span>
         <div id="rawLog">Awaiting BLE connection...</div>
       </div>
     </div>
 
-    <!-- ==================================================== -->
-    <!-- VIEW 2: ROCKET TRACKER (Direction Pointer & Compass) -->
-    <!-- ==================================================== -->
+    <!-- VIEW 2: ROCKET TRACKER -->
     <div id="page-tracker" class="page-view">
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -299,9 +305,6 @@
       </div>
     </div>
 
-    <!-- ==================================================== -->
-    <!-- JAVASCRIPT: BLE PIPELINE, LOGGING & KML GENERATION  -->
-    <!-- ==================================================== -->
     <script>
       // UUID Matching configuration
       const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
@@ -312,13 +315,71 @@
       let rxCharacteristic = null;
       let rxBuffer = "";
 
+      // Unit System State ('M' = Metric, 'FT' = Imperial)
+      let currentUnit = 'M';
+
       // Navigation Coordinates State
       let phoneCoords = null;
       let phoneHeading = 0;
       let targetCoords = null;
 
+      // Latest Parsed Raw Telemetry Cache (used for dynamic UI unit switching)
+      let latestPacket = null;
+
       // Flight Data Recording Storage Array
       let flightLog = [];
+
+      // WGS84 Ellipsoid Constants for Vincenty Algorithm
+      const WGS84_A = 6378137.0;
+      const WGS84_F = 1.0 / 298.257223563;
+      const WGS84_B = WGS84_A * (1.0 - WGS84_F);
+      const VINCENTY_MAX_ITER = 100;
+
+      function deg2rad(deg) {
+        return (deg * Math.PI) / 180.0;
+      }
+
+      // --- UNIT CONVERSION HELPERS ---
+      function toggleUnits() {
+        currentUnit = (currentUnit === 'M') ? 'FT' : 'M';
+        document.getElementById("unitBtn").innerText = (currentUnit === 'M') ? "Units: Metric" : "Units: Imperial";
+        
+        // Refresh UI displays instantly
+        if (latestPacket) updateDashboardUI(latestPacket);
+        if (phoneCoords && targetCoords) updateNavigationCalculation();
+      }
+
+      function formatAltitude(meters) {
+        if (meters === undefined || isNaN(meters)) return "---";
+        if (currentUnit === 'FT') {
+          return (meters * 3.28084).toFixed(1) + " ft";
+        }
+        return meters.toFixed(1) + " m";
+      }
+
+      function formatDistance(meters) {
+        if (meters === undefined || isNaN(meters)) return "---";
+        if (currentUnit === 'FT') {
+          const feet = meters * 3.28084;
+          return feet > 5280 
+            ? (feet / 5280).toFixed(2) + " mi" 
+            : feet.toFixed(1) + " ft";
+        } else {
+          return meters > 1000 
+            ? (meters / 1000).toFixed(2) + " km" 
+            : meters.toFixed(1) + " m";
+        }
+      }
+
+      function formatSpeed(mphVal) {
+        if (mphVal === undefined || isNaN(mphVal)) return "---";
+        if (currentUnit === 'FT') {
+          return mphVal.toFixed(1) + " mph";
+        } else {
+          const kmh = mphVal * 1.60934;
+          return kmh.toFixed(1) + " km/h";
+        }
+      }
 
       // Tab Switcher Controller
       function switchTab(tabName) {
@@ -417,7 +478,8 @@
           }
         });
 
-        // Record timestamped telemetry point into array
+        latestPacket = pData;
+
         const record = {
           timestamp: new Date(),
           lat: pData["Lat"] || 0,
@@ -433,19 +495,12 @@
           batt: pData["Batt"] || 0
         };
 
-        // Append to flight recorder array if valid location received
         if (record.lat !== 0 && record.lon !== 0) {
           flightLog.push(record);
           document.getElementById("logCounter").innerText = `${flightLog.length} data points logged`;
         }
 
-        // Update Dashboard Display Elements
-        if (pData["Alt"] !== undefined) document.getElementById("valGpsAlt").innerText = pData["Alt"].toFixed(1) + " m";
-        if (pData["Baro_Alt"] !== undefined) document.getElementById("valBaroAlt").innerText = pData["Baro_Alt"].toFixed(1) + " m";
-        if (pData["Flight_State"] !== undefined) document.getElementById("valFlightState").innerText = pData["Flight_State"];
-        if (pData["Speed"] !== undefined) document.getElementById("valSpeed").innerText = pData["Speed"].toFixed(1) + " mph";
-        if (pData["Lat"] !== undefined) document.getElementById("valLat").innerText = pData["Lat"].toFixed(6);
-        if (pData["Lon"] !== undefined) document.getElementById("valLon").innerText = pData["Lon"].toFixed(6);
+        updateDashboardUI(pData);
 
         // Update Tracker Navigation Coordinates
         if (pData["Lat"] && pData["Lon"]) {
@@ -458,6 +513,15 @@
 
           updateNavigationCalculation();
         }
+      }
+
+      function updateDashboardUI(pData) {
+        if (pData["Alt"] !== undefined) document.getElementById("valGpsAlt").innerText = formatAltitude(pData["Alt"]);
+        if (pData["Baro_Alt"] !== undefined) document.getElementById("valBaroAlt").innerText = formatAltitude(pData["Baro_Alt"]);
+        if (pData["Flight_State"] !== undefined) document.getElementById("valFlightState").innerText = pData["Flight_State"];
+        if (pData["Speed"] !== undefined) document.getElementById("valSpeed").innerText = formatSpeed(pData["Speed"]);
+        if (pData["Lat"] !== undefined) document.getElementById("valLat").innerText = pData["Lat"].toFixed(6);
+        if (pData["Lon"] !== undefined) document.getElementById("valLon").innerText = pData["Lon"].toFixed(6);
       }
 
       function logRaw(msg) {
@@ -490,7 +554,6 @@
           return;
         }
 
-        // Calculate Flight Metrics
         const launchPoint = flightLog[0];
         const landingPoint = flightLog[flightLog.length - 1];
 
@@ -505,13 +568,11 @@
         const durationSec = Math.round((landingPoint.timestamp - launchPoint.timestamp) / 1000);
         const flightDurationStr = `${Math.floor(durationSec / 60)}m ${durationSec % 60}s`;
 
-        // Coordinate LineString Array (lon,lat,alt)
         let coordsPathString = "";
         flightLog.forEach((pt) => {
           coordsPathString += `${pt.lon.toFixed(6)},${pt.lat.toFixed(6)},${pt.gpsAlt.toFixed(1)}\n`;
         });
 
-        // Construct exact formatted KML Document
         const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
@@ -570,7 +631,7 @@
       <name>LANDING</name>
       <Point>
         <altitudeMode>clampToGround</altitudeMode>
-<coordinates>${landingPoint.lon.toFixed(6)},${landingPoint.lat.toFixed(6)},${landingPoint.gpsAlt.toFixed(1)}</coordinates>
+        <coordinates>${landingPoint.lon.toFixed(6)},${landingPoint.lat.toFixed(6)},${landingPoint.gpsAlt.toFixed(1)}</coordinates>
       </Point>
     </Placemark>
   </Document>
@@ -656,35 +717,147 @@
         }
       }
 
+      // --- VINCENTY INVERSE ENGINE ---
+      function getDirectionAndDistance(latG, lonG, latR, lonR) {
+        if (latG === latR && lonG === lonR) {
+          return { bearing: 0.0, distance: 0.0 };
+        }
+
+        const phi1 = deg2rad(latG);
+        const phi2 = deg2rad(latR);
+        const L = deg2rad(lonR - lonG);
+
+        const U1 = Math.atan((1.0 - WGS84_F) * Math.tan(phi1));
+        const U2 = Math.atan((1.0 - WGS84_F) * Math.tan(phi2));
+        const sinU1 = Math.sin(U1), cosU1 = Math.cos(U1);
+        const sinU2 = Math.sin(U2), cosU2 = Math.cos(U2);
+
+        let lambda = L;
+        let iter;
+        let sinSigma, cosSigma, sigma, sinAlpha, cosSqAlpha, cos2SigmaM;
+
+        for (iter = 0; iter < VINCENTY_MAX_ITER; iter++) {
+          const sinLambda = Math.sin(lambda);
+          const cosLambda = Math.cos(lambda);
+
+          const sinSigmaNum = cosU2 * sinLambda;
+          const cosSigmaPart = cosU1 * sinU2 - sinU1 * cosU2 * cosLambda;
+          sinSigma = Math.sqrt(sinSigmaNum * sinSigmaNum + cosSigmaPart * cosSigmaPart);
+          cosSigma = sinU1 * sinU2 + cosU1 * cosU2 * cosLambda;
+          sigma = Math.atan2(sinSigma, cosSigma);
+
+          sinAlpha = (cosU1 * cosU2 * sinLambda) / sinSigma;
+          cosSqAlpha = 1.0 - sinAlpha * sinAlpha;
+
+          if (cosSqAlpha === 0.0) {
+            cos2SigmaM = 0.0;
+          } else {
+            cos2SigmaM = cosSigma - (2.0 * sinU1 * sinU2) / cosSqAlpha;
+            if (isNaN(cos2SigmaM)) cos2SigmaM = 0.0;
+          }
+
+          const uSq = cosSqAlpha * ((WGS84_A * WGS84_A - WGS84_B * WGS84_B) / (WGS84_B * WGS84_B));
+          const C = (WGS84_F / 16.0) * cosSqAlpha * (4.0 + WGS84_F * (4.0 - 3.0 * cosSqAlpha));
+
+          const lambdaNew =
+            L +
+            (1.0 - C) *
+              WGS84_F *
+              sinAlpha *
+              (sigma + C * sinSigma * (cos2SigmaM + C * cosSigma * (-1.0 + 2.0 * cos2SigmaM * cos2SigmaM)));
+
+          if (Math.abs(lambdaNew - lambda) < 1.0e-12) {
+            lambda = lambdaNew;
+            break;
+          }
+          lambda = lambdaNew;
+        }
+
+        if (iter >= VINCENTY_MAX_ITER) {
+          return _sphericalFallback(phi1, deg2rad(lonG), phi2, deg2rad(lonR));
+        }
+
+        const sinLambdaFinal = Math.sin(lambda);
+        const cosLambdaFinal = Math.cos(lambda);
+        const sinSigmaNumF = cosU2 * sinLambdaFinal;
+        const cosSigmaPartF = cosU1 * sinU2 - sinU1 * cosU2 * cosLambdaFinal;
+        const sinSigmaF = Math.sqrt(sinSigmaNumF * sinSigmaNumF + cosSigmaPartF * cosSigmaPartF);
+        const cosSigmaF = sinU1 * sinU2 + cosU1 * cosU2 * cosLambdaFinal;
+        const sigmaF = Math.atan2(sinSigmaF, cosSigmaF);
+
+        const sinAlphaF = (cosU1 * cosU2 * sinLambdaFinal) / sinSigmaF;
+        const cosSqAlphaF = 1.0 - sinAlphaF * sinAlphaF;
+
+        if (cosSqAlphaF === 0.0) {
+          cos2SigmaM = 0.0;
+        } else {
+          cos2SigmaM = cosSigmaF - (2.0 * sinU1 * sinU2) / cosSqAlphaF;
+          if (isNaN(cos2SigmaM)) cos2SigmaM = 0.0;
+        }
+
+        const uSqFinal = cosSqAlphaF * ((WGS84_A * WGS84_A - WGS84_B * WGS84_B) / (WGS84_B * WGS84_B));
+        const AcoeffFinal =
+          1.0 + (uSqFinal / 16384.0) * (4096.0 + uSqFinal * (-768.0 + uSqFinal * (320.0 - 175.0 * uSqFinal)));
+        const BcoeffFinal =
+          (uSqFinal / 1024.0) * (256.0 + uSqFinal * (-128.0 + uSqFinal * (74.0 - 47.0 * uSqFinal)));
+        const deltaSigmaFinal =
+          BcoeffFinal * sinSigmaF * (cos2SigmaM + BcoeffFinal * cosSigmaF * (-1.0 + 2.0 * cos2SigmaM * cos2SigmaM));
+
+        const distance = WGS84_B * AcoeffFinal * (sigmaF - deltaSigmaFinal);
+        let bearing = Math.atan2(
+          cosU2 * sinLambdaFinal,
+          cosU1 * sinU2 - sinU1 * cosU2 * cosLambdaFinal
+        );
+
+        if (bearing < 0) bearing += 2.0 * Math.PI;
+
+        return { bearing: bearing, distance: distance };
+      }
+
+      function _sphericalFallback(phi1, lam1, phi2, lam2) {
+        const R = (WGS84_A + WGS84_B) / 2.0;
+        const dPhi = phi2 - phi1;
+        const dLam = lam2 - lam1;
+
+        let havA =
+          Math.sin(dPhi / 2.0) ** 2 +
+          Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLam / 2.0) ** 2;
+        havA = Math.min(Math.max(havA, 0.0), 1.0);
+
+        const distance = R * (2.0 * Math.asin(Math.sqrt(havA)));
+        const y = Math.sin(dLam) * Math.cos(phi2);
+        const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLam);
+        let bearing = Math.atan2(y, x);
+        if (bearing < 0) bearing += 2.0 * Math.PI;
+
+        return { bearing: bearing, distance: distance };
+      }
+
+      // --- CALCULATE NAVIGATION UI UPDATES ---
       function updateNavigationCalculation() {
         if (!phoneCoords || !targetCoords) return;
 
-        const lat1 = (phoneCoords.lat * Math.PI) / 180;
-        const lon1 = (phoneCoords.lon * Math.PI) / 180;
-        const lat2 = (targetCoords.lat * Math.PI) / 180;
-        const lon2 = (targetCoords.lon * Math.PI) / 180;
+        const geoResult = getDirectionAndDistance(
+          phoneCoords.lat,
+          phoneCoords.lon,
+          targetCoords.lat,
+          targetCoords.lon
+        );
 
-        const dLon = lon2 - lon1;
-        const y = Math.sin(dLon) * Math.cos(lat2);
-        const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-        let bearing = (Math.atan2(y, x) * 180) / Math.PI;
-        bearing = (bearing + 360) % 360;
+        const bearingDegrees = (geoResult.bearing * 180.0) / Math.PI;
+        const distanceMeters = geoResult.distance;
 
-        const R = 6371000;
-        const dLat = lat2 - lat1;
-        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-        const distanceMeters = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+        document.getElementById("targetDist").innerText = formatDistance(distanceMeters);
+        document.getElementById("targetBearing").innerText = Math.round(bearingDegrees) + "°";
 
-        document.getElementById("targetDist").innerText =
-          distanceMeters > 1000 ? (distanceMeters / 1000).toFixed(2) + " km" : distanceMeters.toFixed(1) + " m";
-        document.getElementById("targetBearing").innerText = Math.round(bearing) + "°";
-
-        const arrowRotation = (bearing - phoneHeading + 360) % 360;
+        const arrowRotation = (bearingDegrees - phoneHeading + 360) % 360;
         document.getElementById("directionArrow").style.transform = `rotate(${arrowRotation}deg)`;
       }
 
+      // Initialize Sensors on Page Load
       window.addEventListener("DOMContentLoaded", () => {
         initPhoneTracking();
+        requestCompassPermission();
       });
     </script>
   </body>
