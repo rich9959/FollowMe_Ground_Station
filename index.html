@@ -851,7 +851,7 @@
         document.getElementById("targetDist").innerText = formatDistance(distanceMeters);
         document.getElementById("targetBearing").innerText = Math.round(bearingDegrees) + "°";
 
-        const arrowRotation = (bearingDegrees - phoneHeading + 360) % 360;
+        const arrowRotation = (phoneHeading - bearingDegrees + 360) % 360;
         document.getElementById("directionArrow").style.transform = `rotate(${arrowRotation}deg)`;
       }
 
